@@ -1,0 +1,52 @@
+# One directory per customer: tenants/<id>/tenant.yaml + knowledge/ (+ orders.json for the demo provider).
+# Secrets are never written here - only the NAMES of the env vars that hold them.
+id: acme
+name: Acme Outfitters
+public_key: pk_acme_demo            # embedded in the customer's site; identifies the tenant (not a secret)
+allowed_origins:                     # sites allowed to embed the widget
+  - http://localhost:5173
+  - http://localhost:8000
+user_token_secret_env: ACME_USER_TOKEN_SECRET   # HS256 secret shared with Acme's backend
+
+branding:
+  title: Acme Support
+  greeting: "Hi! I'm Penny, Acme's virtual assistant. Ask me about shipping, returns, or your orders."
+  primary_color: "#4f46e5"
+
+persona:
+  assistant_name: Penny
+  tone: warm, concise and professional
+  extra_instructions: |
+    Never promise refunds or exceptions; those are decided by human agents.
+    Our support hours are Mon-Fri 9am-6pm ET.
+
+knowledge:
+  path: knowledge
+  min_coverage: 0.35               # below this the KB is treated as "no reliable answer"
+
+orders:
+  provider: demo                     # demo | http | none
+  demo_file: orders.json
+  # provider: http
+  # http:
+  #   base_url: https://api.acme.example/internal
+  #   api_key_env: ACME_ORDER_API_KEY
+  #   field_map: { id: orderNumber, status: state, estimated_delivery: eta.date }
+
+tickets:
+  provider: memory                   # memory | jira | none
+  # provider: jira
+  # jira:
+  #   server: https://acme.atlassian.net
+  #   email_env: ACME_JIRA_EMAIL
+  #   api_token_env: ACME_JIRA_TOKEN
+  #   project_key: SUP
+  #   issue_type: Task
+
+handoff:
+  webhook_url_env: ACME_HANDOFF_WEBHOOK   # optional Slack incoming webhook
+  max_unresolved_turns: 2
+
+agents:                              # human agents allowed into the console
+  - { id: sam, name: Sam Rivera, api_key_env: ACME_AGENT_KEY_SAM }
+  - { id: jo, name: Jo Kim, api_key_env: ACME_AGENT_KEY_JO }

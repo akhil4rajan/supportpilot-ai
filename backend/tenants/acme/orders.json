@@ -1,0 +1,12 @@
+[
+  {"id": "ACM-1001", "customer_id": "alice", "status": "Shipped", "placed_at": "2026-10-06",
+   "items": [{"name": "Trail Runner Jacket", "quantity": 1}, {"name": "Merino Socks (2-pack)", "quantity": 2}],
+   "total": 142.50, "currency": "USD", "carrier": "UPS", "tracking_number": "1Z999AA10123456784",
+   "tracking_url": "https://www.ups.com/track?tracknum=1Z999AA10123456784", "estimated_delivery": "2026-10-14"},
+  {"id": "ACM-1002", "customer_id": "alice", "status": "Delivered", "placed_at": "2026-09-20",
+   "items": [{"name": "Summit Backpack 40L", "quantity": 1}], "total": 189.00, "currency": "USD",
+   "carrier": "FedEx", "tracking_number": "781234567890", "estimated_delivery": "2026-09-25"},
+  {"id": "ACM-2001", "customer_id": "bob", "status": "Processing", "placed_at": "2026-10-11",
+   "items": [{"name": "Camp Stove", "quantity": 1}], "total": 64.99, "currency": "USD",
+   "estimated_delivery": "2026-10-18"}
+]

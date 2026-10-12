@@ -1,0 +1,7 @@
+body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; color:#0f172a; background:#f8fafc; }
+.bar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 24px; background:#0f172a; color:#fff; }
+.bar select { padding:6px 8px; border-radius:6px; }
+main { max-width:860px; margin:0 auto; padding:24px 16px 120px; }
+.hero { padding:56px 0 24px; } .hero h1 { font-size:40px; margin:0 0 8px; }
+.try { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:8px 24px 16px; } .try li { margin:8px 0; } q { font-weight:600; }
+code { background:#f1f5f9; padding:1px 5px; border-radius:4px; }

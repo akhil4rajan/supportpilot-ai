@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- The ENTIRE integration for a customer's website: one script tag. -->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>My site</title></head>
+  <body>
+    <h1>My website</h1>
+    <script
+      src="https://YOUR-SUPPORTPILOT-HOST/widget.js"
+      data-public-key="pk_acme_demo"
+      data-token-url="/api/support-token"
+      defer></script>
+    <!-- data-token-url: an endpoint on YOUR backend that returns {"user_token": "..."} for the signed-in user
+         (404/401 for guests -> anonymous chat). See examples/host_token_server.py.
+         Optional: data-color="#0a7" data-position="left" data-api-url="https://..." -->
+  </body>
+</html>
