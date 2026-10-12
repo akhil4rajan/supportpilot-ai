@@ -41,6 +41,7 @@ class ToolContext:
     escalation_trigger: str = "model"
     llm_ms: float = 0.0  # time spent waiting on the model this turn (the rest of the turn is platform overhead)
     llm_calls: int = 0
+    queue_ms: float = 0.0  # waiting for a model slot (platform backpressure), excluded from llm_ms
 
 
 async def _audit(ctx: ToolContext, action: str, detail: dict[str, Any]) -> None:

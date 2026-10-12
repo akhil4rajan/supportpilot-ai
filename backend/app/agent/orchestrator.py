@@ -95,7 +95,7 @@ class SupportAgent:
             return await self._new_since_user(db, conv)
 
         meta = {"sources": ctx.sources, "tickets": ctx.tickets, "tools": ctx.tools_used,
-                "timing": {"llm_ms": round(ctx.llm_ms), "llm_calls": ctx.llm_calls}}
+                "timing": {"llm_ms": round(ctx.llm_ms), "queue_ms": round(ctx.queue_ms), "llm_calls": ctx.llm_calls}}
         await convs.add_message(db, self.hub, conv, "assistant", reply, meta)
 
         # Unresolved-turn accounting -> automatic escalation.
@@ -158,6 +158,8 @@ class SupportAgent:
             finally:
                 ctx.llm_ms += (time.perf_counter() - t_llm) * 1000
                 ctx.llm_calls += 1
+            ctx.queue_ms += resp.queue_ms
+            ctx.llm_ms -= resp.queue_ms  # queueing is our backpressure, not the model's latency
             if resp.stop_reason == "refusal":
                 ctx.escalation = ctx.escalation or ("Model declined to respond", "The assistant could not process this request.")
                 ctx.escalation_trigger = "refusal"

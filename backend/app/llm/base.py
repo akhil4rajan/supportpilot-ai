@@ -23,6 +23,7 @@ class LLMResponse:
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
+    queue_ms: float = 0.0  # time spent waiting for a concurrency slot (set by GuardedLLM); NOT model time
 
 
 class LLMError(Exception):

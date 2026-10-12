@@ -21,6 +21,7 @@ class GuardedLLM:
         # Admission control: if the model is saturated, fail fast (the turn degrades to a human handoff) instead of
         # piling up requests until every HTTP worker is blocked.
         metrics.LLM_QUEUED.inc()
+        t_wait = time.perf_counter()
         try:
             await asyncio.wait_for(self._sem.acquire(), self.queue_timeout)
         except asyncio.TimeoutError:
@@ -28,6 +29,7 @@ class GuardedLLM:
             raise LLMError("model concurrency limit reached", "overload") from None
         finally:
             metrics.LLM_QUEUED.dec()
+        queue_ms = (time.perf_counter() - t_wait) * 1000
         metrics.LLM_INFLIGHT.inc()
         t0 = time.perf_counter()
         try:
@@ -44,6 +46,7 @@ class GuardedLLM:
             metrics.LLM_INFLIGHT.dec()
             self._sem.release()
             metrics.LLM_LATENCY.labels(self.model).observe(time.perf_counter() - t0)
+        resp.queue_ms = queue_ms
         metrics.LLM_CALLS.labels(self.model, "refusal" if resp.stop_reason == "refusal" else "ok").inc()
         for kind, n in (("input", resp.input_tokens), ("output", resp.output_tokens), ("cache_read", resp.cache_read_tokens), ("cache_write", resp.cache_write_tokens)):
             if n:
