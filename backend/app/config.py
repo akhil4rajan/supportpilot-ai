@@ -26,8 +26,21 @@ class Settings(BaseSettings):
     llm_provider: str = "anthropic"  # anthropic | demo (keyword-based, no API key; for trying the UI)
     anthropic_model: str = "claude-opus-5-5"  # cheaper options: claude-sonnet-5-5, claude-haiku-5-5
     anthropic_effort: str = "medium"  # low | medium | high ...
+    anthropic_fallback_model: str = ""  # used when the primary is overloaded/timing out, e.g. claude-sonnet-5-5
     llm_max_tokens: int = Field(default=2048, ge=256)
     llm_max_tool_steps: int = Field(default=6, ge=1)
+
+    redis_url: str = ""  # set to run multiple replicas (shared WebSocket fan-out + rate limits)
+    llm_max_concurrency: int = Field(default=64, ge=1)  # concurrent model calls per replica
+    llm_queue_timeout_seconds: float = 20.0  # waiting for a model slot longer than this => degrade to human
+    llm_call_timeout_seconds: float = 60.0
+    db_pool_size: int = 10
+    db_max_overflow: int = 20
+    metrics_token: str = ""  # if set, /metrics requires "Authorization: Bearer <token>"
+    log_format: str = "text"  # text | json
+    outbox_poll_seconds: float = 5.0
+    outbox_max_attempts: int = 8
+    run_outbox_worker: bool = True  # set false on web replicas if you run a dedicated worker
 
     session_ttl_minutes: int = 4 * 60
     agent_token_ttl_minutes: int = 8 * 60

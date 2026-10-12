@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import metrics
 from app.auth import AgentClaims, AuthError, check_agent_key, issue_agent_token, verify_agent_token
 from app.db import Conversation
 from app.services import conversations as convs
@@ -81,11 +82,19 @@ async def claim(cid: str, claims: AgentClaims = Depends(agent_claims), st: AppSt
     conv = await _load(db, claims, cid)
     if conv.status not in convs.HANDOFF_STATES:
         raise HTTPException(409, "conversation is not in the human queue")
-    if conv.assigned_agent_id and conv.assigned_agent_id != claims.agent_id:
-        raise HTTPException(409, f"already handled by {conv.assigned_agent_name}")
-    first = conv.assigned_agent_id is None
-    conv.status, conv.assigned_agent_id, conv.assigned_agent_name = "with_human", claims.agent_id, claims.name
+    base = (Conversation.id == cid, Conversation.tenant_id == claims.tenant_id, Conversation.status.in_(convs.HANDOFF_STATES))
+    mine = dict(status="with_human", assigned_agent_id=claims.agent_id, assigned_agent_name=claims.name)
+    # Atomic compare-and-set in the database, so of N agents clicking "take over" at once exactly one UPDATE matches
+    # (a read-then-write would let several win). Safe across replicas.
+    first = (await db.execute(update(Conversation).where(*base, Conversation.assigned_agent_id.is_(None)).values(**mine))).rowcount == 1
+    if not first:  # not free: only the current owner may "re-claim" (idempotent, no second 'joined' message)
+        again = await db.execute(update(Conversation).where(*base, Conversation.assigned_agent_id == claims.agent_id).values(**mine))
+        if again.rowcount != 1:
+            await db.rollback()
+            await db.refresh(conv)
+            raise HTTPException(409, f"already handled by {conv.assigned_agent_name or 'another agent'}")
     await db.commit()
+    await db.refresh(conv)
     if first:
         await convs.add_message(db, st.hub, conv, "system", f"{claims.name} joined the conversation.", {"event": "agent_joined"})
     await convs.publish_update(st.hub, conv)
@@ -144,8 +153,12 @@ async def agent_ws(ws: WebSocket):
         await ws.close(code=4401)
         return
     await ws.accept()
-    with st.hub.subscribe_agents(claims.tenant_id) as q:
-        try:
-            await pump(ws, q)
-        except WebSocketDisconnect:
-            pass
+    metrics.WS_CONNECTIONS.labels("agent").inc()
+    try:
+        with st.hub.subscribe_agents(claims.tenant_id) as q:
+            try:
+                await pump(ws, q)
+            except WebSocketDisconnect:
+                pass
+    finally:
+        metrics.WS_CONNECTIONS.labels("agent").dec()

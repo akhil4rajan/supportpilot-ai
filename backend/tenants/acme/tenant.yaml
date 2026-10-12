@@ -22,7 +22,13 @@ persona:
 
 knowledge:
   path: knowledge
-  min_coverage: 0.35               # below this the KB is treated as "no reliable answer"
+  min_coverage: 0.35               # >= this: confident match
+  weak_coverage: 0.10              # [0.10, 0.35): "possible" match, flagged low-confidence for the model to judge
+  synonyms:                        # how customers phrase things -> the term used in the docs
+    refund: [money back, reimburse, reimbursement]
+    return: [send back, send it back, sending back]
+    shipping: [package, parcel, deliver, delivery, postage]
+    damaged: [broken, defective, faulty]
 
 orders:
   provider: demo                     # demo | http | none

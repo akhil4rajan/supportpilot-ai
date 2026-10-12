@@ -30,7 +30,7 @@ def _say(text: str) -> LLMResponse:
 
 
 class DemoLLM:
-    async def complete(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse:
+    async def complete(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]], static_system_len: int = 0) -> LLMResponse:
         last = messages[-1]
         names = {t["name"] for t in tools}
         if isinstance(last["content"], list) and last["content"] and last["content"][0].get("type") == "tool_result":
@@ -60,7 +60,7 @@ class DemoLLM:
         except json.JSONDecodeError:
             return _say(str(raw))
         if "passages" in data:
-            if not data.get("confident"):
+            if not data["passages"]:
                 return _say("I couldn't find that in our help articles. Would you like me to open a ticket or connect you with a person?")
             p = data["passages"][0]
             return _say(f"{p['text'][:500]}\n\n(Source: {p['source']})")

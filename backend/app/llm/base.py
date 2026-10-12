@@ -19,11 +19,23 @@ class LLMResponse:
     # thinking blocks intact, which the API requires when continuing a tool-use turn).
     content: list[Any] = field(default_factory=list)
     stop_reason: str = "end_turn"  # end_turn | tool_use | max_tokens | refusal | ...
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 class LLMError(Exception):
-    pass
+    """Model call failed. `kind` feeds metrics/alerts: error | timeout | overload."""
+
+    def __init__(self, message: str, kind: str = "error") -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 class LLMClient(Protocol):
-    async def complete(self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse: ...
+    async def complete(
+        self, *, system: str, messages: list[dict[str, Any]], tools: list[dict[str, Any]], static_system_len: int = 0
+    ) -> LLMResponse:
+        """`system[:static_system_len]` is identical for every conversation of a tenant (cacheable prefix)."""
+        ...

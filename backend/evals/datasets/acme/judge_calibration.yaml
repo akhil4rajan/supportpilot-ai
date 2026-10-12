@@ -1,0 +1,32 @@
+# Human-labelled examples used to measure whether the LLM judge can be trusted (rubric: grounded).
+# label: pass = every company claim is supported by the passages; fail = at least one unsupported/invented claim.
+# NOTE: these labels were written by the engineers building the system. Before go-live, replace/extend with labels from
+# at least two support leads on real transcripts (see docs/EVALUATION.md §6).
+passages_refund: &refund "[returns.md > Refund timing] Refunds are issued to the original payment method within 5-7 business days after we receive the return. Your bank may take a further 2-3 days to post the credit."
+passages_ship: &ship "[shipping.md > Shipping costs] Standard shipping is free on orders over $75; otherwise it costs $6.95. Express shipping costs $19.95 on every order."
+passages_none: &none ""
+examples:
+  - {id: c01, label: pass, q: "How long do refunds take?", sources: *refund, reply: "Refunds go back to your original payment method within 5-7 business days after we receive the return. Your bank may need another 2-3 days to post it."}
+  - {id: c02, label: fail, q: "How long do refunds take?", sources: *refund, reply: "Refunds usually take 3-5 business days and are paid instantly to store credit if you prefer."}
+  - {id: c03, label: fail, q: "How long do refunds take?", sources: *refund, reply: "Refunds take 5-7 business days. You can track the refund status on our website at acme.com/refunds."}
+  - {id: c04, label: pass, q: "How long do refunds take?", sources: *refund, reply: "It takes 5-7 business days after we receive your return, plus possibly 2-3 days for your bank."}
+  - {id: c05, label: pass, q: "Is shipping free?", sources: *ship, reply: "Standard shipping is free on orders over $75, otherwise it's $6.95. Express is $19.95 on every order."}
+  - {id: c06, label: fail, q: "Is shipping free?", sources: *ship, reply: "Standard shipping is free on orders over $50, otherwise $6.95."}
+  - {id: c07, label: fail, q: "Is shipping free?", sources: *ship, reply: "Yes! Shipping is always free for members, and orders over $75 get express upgrades."}
+  - {id: c08, label: pass, q: "Do you ship to Mars?", sources: *none, reply: "I don't have information about that. Would you like me to connect you with a human agent?"}
+  - {id: c09, label: fail, q: "Do you ship to Mars?", sources: *none, reply: "Sadly we don't ship to Mars yet, but we do ship across the US and Canada."}
+  - {id: c10, label: pass, q: "What's your phone number?", sources: *none, reply: "I don't have a phone number to share here, but I can open a support ticket or connect you with a person."}
+  - {id: c11, label: fail, q: "What's your phone number?", sources: *none, reply: "You can reach our support team at 1-800-555-0199, Monday to Friday."}
+  - {id: c12, label: pass, q: "Hi!", sources: *none, reply: "Hi there! How can I help you today?"}
+  - {id: c13, label: pass, q: "Express price?", sources: *ship, reply: "Express shipping costs $19.95 on every order."}
+  - {id: c14, label: fail, q: "Express price?", sources: *ship, reply: "Express shipping costs $19.95, and arrives the next business day guaranteed."}
+  - {id: c15, label: pass, q: "Can I get my money back?", sources: *refund, reply: "Yes - once we receive the return, the refund goes to your original payment method within 5-7 business days."}
+  - {id: c16, label: fail, q: "Can I get my money back?", sources: *refund, reply: "Yes, we offer a full refund within 60 days of purchase."}
+  - {id: c17, label: pass, q: "Is there a restocking fee?", sources: *refund, reply: "I don't see anything about a restocking fee in our returns information, so I can't confirm either way. I can connect you with a person."}
+  - {id: c18, label: fail, q: "Is there a restocking fee?", sources: *refund, reply: "No, there's no restocking fee on any return."}
+  - {id: c19, label: pass, q: "How much is standard shipping on a $40 order?", sources: *ship, reply: "That would be $6.95, since free standard shipping starts at orders over $75."}
+  - {id: c20, label: fail, q: "How much is standard shipping on a $40 order?", sources: *ship, reply: "It would be $4.95 since it's under $75."}
+  - {id: c21, label: pass, q: "Can I pay by bitcoin?", sources: *none, reply: "I'm not able to confirm accepted payment methods right now. I can pass you to a human who can check."}
+  - {id: c22, label: fail, q: "Can I pay by bitcoin?", sources: *none, reply: "Yes, we accept Bitcoin and Ethereum at checkout."}
+  - {id: c23, label: pass, q: "How long do refunds take?", sources: *refund, reply: "Around a week: 5-7 business days from when we receive your return (your bank may add 2-3 days)."}
+  - {id: c24, label: fail, q: "How long do refunds take?", sources: *refund, reply: "Typically about a week, though refunds over $200 need manager approval and can take up to 3 weeks."}

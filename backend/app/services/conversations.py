@@ -72,16 +72,16 @@ async def add_message(
     conv.updated_at = utcnow()
     await db.commit()
     event = {"type": "message", "conversation_id": conv.id, "message": msg_out(m)}
-    hub.to_customer(conv.id, event)
+    await hub.to_customer(conv.id, event)
     if conv.status in HANDOFF_STATES or role == "system":
-        hub.to_agents(conv.tenant_id, event)
+        await hub.to_agents(conv.tenant_id, event)
     return m
 
 
 async def publish_update(hub: Hub, conv: Conversation) -> None:
     event = {"type": "conversation_updated", "conversation": conv_out(conv)}
-    hub.to_customer(conv.id, event)
-    hub.to_agents(conv.tenant_id, event)
+    await hub.to_customer(conv.id, event)
+    await hub.to_agents(conv.tenant_id, event)
 
 
 async def tickets_for(db: AsyncSession, conversation_id: str) -> list[Ticket]:

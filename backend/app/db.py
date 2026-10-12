@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -40,6 +40,11 @@ class Conversation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
+    __table_args__ = (
+        Index("ix_conv_queue", "tenant_id", "status", "handoff_at"),  # agent queue listing
+        Index("ix_conv_user", "tenant_id", "user_id", "status", "updated_at"),  # resume a signed-in user's chat
+    )
+
 
 class Message(Base):
     __tablename__ = "messages"
@@ -64,6 +69,25 @@ class Ticket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class TicketOutbox(Base):
+    """Tickets that could not be filed right now (tracker down/rate-limited). A worker retries with backoff, so a
+    Jira outage delays tickets instead of losing them."""
+
+    __tablename__ = "ticket_outbox"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id"), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(12), default="pending")  # pending | processing | done | dead
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ticket_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    __table_args__ = (Index("ix_outbox_due", "status", "next_attempt_at"),)
+
+
 class AuditLog(Base):
     """Who looked at what. Order lookups (found or not) are recorded for security review."""
 
@@ -76,10 +100,15 @@ class AuditLog(Base):
     detail: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
+    __table_args__ = (Index("ix_audit_tenant_created", "tenant_id", "created_at"),)  # investigations: "what happened in this window?"
+
 
 class Database:
-    def __init__(self, url: str) -> None:
-        self.engine = create_async_engine(url, future=True)
+    def __init__(self, url: str, pool_size: int = 10, max_overflow: int = 20) -> None:
+        kwargs: dict[str, Any] = {}
+        if not url.startswith("sqlite"):  # pool sizing applies to server databases (Postgres), not SQLite
+            kwargs = {"pool_size": pool_size, "max_overflow": max_overflow, "pool_pre_ping": True, "pool_recycle": 1800}
+        self.engine = create_async_engine(url, future=True, **kwargs)
         self.sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
 
     async def create_all(self) -> None:

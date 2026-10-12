@@ -40,7 +40,7 @@ class ScriptedLLM:
     def __init__(self, *steps: LLMResponse) -> None:
         self.steps, self.calls = list(steps), []
 
-    async def complete(self, *, system, messages, tools):
+    async def complete(self, *, system, messages, tools, static_system_len=0):
         self.calls.append({"system": system, "messages": [dict(m) for m in messages], "tools": tools})
         return self.steps.pop(0)
 
@@ -70,7 +70,7 @@ def make_client(tmp_path):
         (tdir / "globex" / "tenant.yaml").write_text(GLOBEX)
         settings = Settings(
             env=env, database_url=f"sqlite+aiosqlite:///{tmp_path}/t{len(clients)}.db", tenants_dir=tdir,
-            server_secret="server-secret-for-tests-0123456789abcdef", admin_api_key="admin-key",
+            server_secret="server-secret-for-tests-0123456789abcdef", admin_api_key="admin-key", run_outbox_worker=False,
         )
         c = TestClient(create_app(settings, llm or DemoLLM()))
         c.__enter__()
@@ -106,3 +106,53 @@ def agent_login(c: TestClient, tenant="acme", key="sam-key") -> dict[str, str]:
     r = c.post("/v1/agent/login", json={"tenant_id": tenant, "api_key": key})
     assert r.status_code == 200, r.text
     return auth(r.json()["token"])
+
+
+# ----------------------------------------------------------------------------- async app + real Redis helpers
+import asyncio  # noqa: E402
+import contextlib  # noqa: E402
+import shutil as _sh  # noqa: E402
+import socket  # noqa: E402
+import subprocess  # noqa: E402
+import time  # noqa: E402
+
+import httpx  # noqa: E402
+
+
+def _free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture(scope="session")
+def redis_url():
+    """A throwaway real redis-server (skipped when the binary is unavailable)."""
+    exe = _sh.which("redis-server")
+    if not exe:
+        pytest.skip("redis-server not installed")
+    port = _free_port()
+    proc = subprocess.Popen([exe, "--port", str(port), "--save", "", "--appendonly", "no"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for _ in range(50):
+        with contextlib.suppress(OSError):
+            socket.create_connection(("127.0.0.1", port), 0.1).close()
+            break
+        time.sleep(0.1)
+    yield f"redis://127.0.0.1:{port}/0"
+    proc.terminate()
+    proc.wait(5)
+
+
+@contextlib.asynccontextmanager
+async def async_app(tmp_path, llm=None, **overrides):
+    """The real app (lifespan included) behind an async client: for concurrency tests."""
+    tdir = tmp_path / "tenants"
+    shutil.copytree(ROOT / "tenants" / "acme", tdir / "acme")
+    kw = dict(env="dev", database_url=f"sqlite+aiosqlite:///{tmp_path}/a.db", tenants_dir=tdir,
+              server_secret="server-secret-for-tests-0123456789abcdef", admin_api_key="admin-key", run_outbox_worker=False)
+    kw.update(overrides)
+    app = create_app(Settings(**kw), llm or DemoLLM())
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+            c.app = app  # type: ignore[attr-defined]
+            yield c

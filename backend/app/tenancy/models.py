@@ -27,8 +27,11 @@ class Persona(BaseModel):
 
 class KnowledgeConfig(BaseModel):
     path: str = "knowledge"  # relative to the tenant directory
-    min_coverage: float = Field(0.35, ge=0, le=1)  # below this the KB "has no reliable answer"
+    min_coverage: float = Field(0.35, ge=0, le=1)  # >= this: confident match
+    weak_coverage: float = Field(0.10, ge=0, le=1)  # [weak, min): "possible" match, flagged low-confidence; < weak: nothing
     top_k: int = 4
+    # Customer phrasing -> canonical term in the docs. {"refund": ["money back", "reimburse"]}
+    synonyms: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class HttpOrdersConfig(BaseModel):

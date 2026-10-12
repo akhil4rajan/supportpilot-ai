@@ -1,0 +1,34 @@
+{"id":"h-ship-01","q":"how many business days does delivery take within the US","source":"shipping.md","heading":"Delivery times","kind":"direct"}
+{"id":"h-ship-02","q":"do you offer next day delivery","source":"shipping.md","heading":"Delivery times","kind":"paraphrase"}
+{"id":"h-ship-03","q":"what will I pay for shipping on a $50 order","source":"shipping.md","heading":"Shipping costs","kind":"paraphrase"}
+{"id":"h-ship-04","q":"I haven't received a tracking email for my order","source":"shipping.md","heading":"Tracking","kind":"paraphrase"}
+{"id":"h-ship-05","q":"can you deliver to an address in the UK","source":"shipping.md","heading":"International","kind":"direct"}
+{"id":"h-ship-06","q":"are taxes included when shipping abroad","source":"shipping.md","heading":"International","kind":"paraphrase"}
+{"id":"h-ret-01","q":"I want to send back a pair of socks I bought last week","source":"returns.md","heading":"return","kind":"paraphrase"}
+{"id":"h-ret-02","q":"what's the deadline to return an unused item","source":"returns.md","heading":"Return window","kind":"direct"}
+{"id":"h-ret-03","q":"can I exchange an item that was on sale","source":"returns.md","heading":"Return window","kind":"direct"}
+{"id":"h-ret-04","q":"how long until the credit appears on my bank statement","source":"returns.md","heading":"Refund timing","kind":"paraphrase"}
+{"id":"h-ret-05","q":"my parcel arrived with the wrong item inside","source":"returns.md","heading":"Damaged","kind":"paraphrase"}
+{"id":"h-ret-06","q":"do I need to send a photo when reporting a faulty product","source":"returns.md","heading":"Damaged","kind":"paraphrase"}
+{"id":"h-acc-01","q":"I can't log in and need to reset my login password","source":"account.md","heading":"password","kind":"direct"}
+{"id":"h-acc-02","q":"how long is the password reset link valid for","source":"account.md","heading":"password","kind":"direct"}
+{"id":"h-acc-03","q":"I moved house, how do I change my delivery address on my profile","source":"account.md","heading":"email or address","kind":"paraphrase"}
+{"id":"h-acc-04","q":"which payment options are available at checkout","source":"account.md","heading":"payment methods","kind":"paraphrase"}
+{"id":"h-acc-05","q":"can I combine a gift card with a credit card","source":"account.md","heading":"payment methods","kind":"direct"}
+{"id":"h-acc-06","q":"I ordered by mistake, can I stop the order","source":"account.md","heading":"Cancelling","kind":"paraphrase"}
+{"id":"h-acc-07","q":"what happens if I try to cancel something that already shipped","source":"account.md","heading":"Cancelling","kind":"direct"}
+{"id":"h-war-01","q":"is there a guarantee on your products","source":"warranty.md","heading":"Warranty","kind":"paraphrase"}
+{"id":"h-war-02","q":"does the warranty cover accidental damage","source":"warranty.md","heading":"Warranty","kind":"direct"}
+{"id":"h-war-03","q":"my backpack strap tore, what do I need to send you to claim","source":"warranty.md","heading":"warranty claim","kind":"paraphrase"}
+{"id":"h-war-04","q":"can I use fabric softener on the jacket","source":"warranty.md","heading":"Washing","kind":"direct"}
+{"id":"h-war-05","q":"what temperature should I wash the Trail Runner at","source":"warranty.md","heading":"Washing","kind":"paraphrase"}
+{"id":"h-oos-01","q":"is there a restocking fee","kind":"oos_near"}
+{"id":"h-oos-02","q":"do you price match Amazon","kind":"oos_near"}
+{"id":"h-oos-03","q":"can I get a discount code for my first order","kind":"oos_near"}
+{"id":"h-oos-04","q":"what time do you open on Sundays","kind":"oos"}
+{"id":"h-oos-05","q":"who founded Acme Outfitters","kind":"oos"}
+{"id":"h-oos-06","q":"what's a good sleeping bag for winter camping","kind":"oos"}
+{"id":"h-oos-07","q":"can I return something I bought in a physical store","kind":"oos_near"}
+{"id":"h-oos-08","q":"how do I unsubscribe from marketing emails","kind":"oos_near"}
+{"id":"h-oos-09","q":"is the Trail Runner jacket waterproof","kind":"oos_near"}
+{"id":"h-oos-10","q":"what is the meaning of life","kind":"oos"}

@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import metrics
 from app.auth import VerifiedUser
 from app.config import Settings
 from app.db import Conversation
@@ -50,6 +52,24 @@ class SupportAgent:
         self, db: AsyncSession, rt: TenantRuntime, conv: Conversation, user: VerifiedUser | None, text: str
     ) -> list[dict[str, Any]]:
         """Persist the customer's message and return the new messages produced in response."""
+        t0 = time.perf_counter()
+        out: list[dict[str, Any]] = []
+        outcome = "answered"
+        try:
+            out = await self._handle(db, rt, conv, user, text)
+            if conv.status in convs.HANDOFF_STATES:
+                outcome = "handoff"
+            return out
+        except Exception:
+            outcome = "error"
+            raise
+        finally:
+            metrics.TURNS.labels(rt.tenant.id, outcome).inc()
+            metrics.TURN_LATENCY.labels(rt.tenant.id, outcome).observe(time.perf_counter() - t0)
+
+    async def _handle(
+        self, db: AsyncSession, rt: TenantRuntime, conv: Conversation, user: VerifiedUser | None, text: str
+    ) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
         if conv.status == "resolved":  # customer came back: reopen with the bot
             conv.status = "bot"
@@ -62,34 +82,36 @@ class SupportAgent:
             return out  # a human owns the conversation now; the bot stays silent
 
         if _WANTS_HUMAN.search(text):
-            await start_handoff(db, self.hub, rt, conv, "Customer asked for a human", text[:500])
+            await start_handoff(db, self.hub, rt, conv, "Customer asked for a human", text[:500], trigger="phrase")
             return await self._new_since_user(db, conv)
 
         ctx = ToolContext(db=db, rt=rt, conv=conv, user=user)
         try:
             reply = await self._run_model(ctx, db, conv, user)
-        except LLMError:
-            log.exception("LLM failure; escalating conv=%s", conv.id)
-            await convs.add_message(db, self.hub, conv, "assistant", APOLOGY, {"error": "llm_unavailable"})
-            await start_handoff(db, self.hub, rt, conv, "Assistant unavailable (model error)", text[:500])
+        except LLMError as e:
+            log.error("LLM failure kind=%s; escalating conv=%s", e.kind, conv.id)
+            await convs.add_message(db, self.hub, conv, "assistant", APOLOGY, {"error": "llm_unavailable", "kind": e.kind})
+            await start_handoff(db, self.hub, rt, conv, f"Assistant unavailable ({e.kind})", text[:500], trigger="llm_error")
             return await self._new_since_user(db, conv)
 
-        meta = {"sources": ctx.sources, "tickets": ctx.tickets, "tools": ctx.tools_used}
+        meta = {"sources": ctx.sources, "tickets": ctx.tickets, "tools": ctx.tools_used,
+                "timing": {"llm_ms": round(ctx.llm_ms), "llm_calls": ctx.llm_calls}}
         await convs.add_message(db, self.hub, conv, "assistant", reply, meta)
 
         # Unresolved-turn accounting -> automatic escalation.
-        if ctx.kb_searched and not ctx.kb_confident and not ctx.task_succeeded and ctx.escalation is None:
-            conv.unanswered_count += 1
-        elif ctx.kb_confident or ctx.task_succeeded:
+        if ctx.kb_none and not ctx.kb_confident and not ctx.task_succeeded and ctx.escalation is None:
+            conv.unanswered_count += 1  # clear miss: nothing relevant in the KB
+        elif ctx.kb_searched or ctx.task_succeeded:
             conv.unanswered_count = 0
         await db.commit()
 
         if ctx.escalation:
-            await start_handoff(db, self.hub, rt, conv, *ctx.escalation)
+            await start_handoff(db, self.hub, rt, conv, *ctx.escalation, trigger=ctx.escalation_trigger)
         elif conv.unanswered_count >= rt.tenant.handoff.max_unresolved_turns:
             await start_handoff(
                 db, self.hub, rt, conv,
                 f"Automatic: assistant could not answer {conv.unanswered_count} questions in a row", text[:500],
+                trigger="auto_unanswered",
             )
         return await self._new_since_user(db, conv)
 
@@ -120,15 +142,25 @@ class SupportAgent:
         return msgs
 
     async def _run_model(self, ctx: ToolContext, db: AsyncSession, conv: Conversation, user: VerifiedUser | None) -> str:
-        system = build_system_prompt(ctx.rt, user)
+        static, dynamic = build_system_prompt(ctx.rt, user)
+        system, static_len = static + "\n\n" + dynamic, len(static)
         tools = tool_schemas(ctx.rt)
         messages = await self._history_for_model(db, conv)
 
         resp: LLMResponse | None = None
         for _ in range(self.settings.llm_max_tool_steps):
-            resp = await self.llm.complete(system=system, messages=messages, tools=tools)
+            # Never hold a DB connection while waiting on the model: a turn spends seconds there, and a held connection
+            # caps concurrency at the pool size. commit() ends the open read transaction and returns the connection.
+            await db.commit()
+            t_llm = time.perf_counter()
+            try:
+                resp = await self.llm.complete(system=system, messages=messages, tools=tools, static_system_len=static_len)
+            finally:
+                ctx.llm_ms += (time.perf_counter() - t_llm) * 1000
+                ctx.llm_calls += 1
             if resp.stop_reason == "refusal":
                 ctx.escalation = ctx.escalation or ("Model declined to respond", "The assistant could not process this request.")
+                ctx.escalation_trigger = "refusal"
                 return EMPTY_FALLBACK
             if not resp.tool_calls:
                 break
@@ -140,6 +172,7 @@ class SupportAgent:
         else:
             log.warning("tool loop exhausted conv=%s", conv.id)
             ctx.escalation = ctx.escalation or ("Assistant could not finish within the tool-step limit", "Loop limit reached.")
+            ctx.escalation_trigger = "loop_limit"
             return EMPTY_FALLBACK
 
         text = (resp.text if resp else "").strip()
@@ -151,6 +184,7 @@ class SupportAgent:
         allowed = {t["name"] for t in tool_schemas(ctx.rt)}
         fn = IMPLEMENTATIONS.get(name)
         if fn is None or name not in allowed:
+            metrics.TOOL_CALLS.labels("unknown", "error").inc()
             return {"type": "tool_result", "tool_use_id": call_id, "is_error": True, "content": f"Unknown tool {name}"}
         ctx.tools_used.append(name)
         try:
@@ -158,7 +192,9 @@ class SupportAgent:
             declared = next(t for t in tool_schemas(ctx.rt) if t["name"] == name)["input_schema"]["properties"]
             clean = {k: v for k, v in (args or {}).items() if k in declared}
             result = await fn(ctx, **clean)
+            metrics.TOOL_CALLS.labels(name, "error" if "error" in result else "ok").inc()
             return {"type": "tool_result", "tool_use_id": call_id, "content": json.dumps(result, default=str)}
         except Exception:  # noqa: BLE001 - a tool bug must not kill the chat
             log.exception("tool %s failed", name)
+            metrics.TOOL_CALLS.labels(name, "error").inc()
             return {"type": "tool_result", "tool_use_id": call_id, "is_error": True, "content": "Tool failed unexpectedly."}

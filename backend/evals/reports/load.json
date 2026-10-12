@@ -1,0 +1,78 @@
+{
+ "mode": "ramp",
+ "requirement": {
+  "conversations_per_day": 30000,
+  "design_turns_per_s": 32.5
+ },
+ "sustained_turns_per_s_per_process": 1.6,
+ "gates": {
+  "error_rate": 0.0,
+  "p95_overhead_ms": 33,
+  "capacity_ratio": 0.049
+ },
+ "steps": [
+  {
+   "conv_per_s_offered": 1.0,
+   "turns_per_s_achieved": 1.6,
+   "conversations": 15,
+   "turns": 90,
+   "handoffs": 2,
+   "http_requests": 105,
+   "errors": 0,
+   "error_rate": 0.0,
+   "status": {
+    "200": 105
+   },
+   "latency_ms": {
+    "p50": 4528,
+    "p95": 7734,
+    "p99": 9898
+   },
+   "overhead_ms": {
+    "p50": 23,
+    "p95": 33,
+    "p99": 38
+   },
+   "wall_s": 55.3,
+   "arrival_window_s": 15.2,
+   "server_metrics_sample": [
+    "sp_llm_inflight 0.0",
+    "sp_ticket_outbox_pending 0.0",
+    "sp_authz_violations_total 0.0"
+   ]
+  },
+  {
+   "conv_per_s_offered": 1.6,
+   "turns_per_s_achieved": 2.1,
+   "conversations": 26,
+   "turns": 158,
+   "handoffs": 1,
+   "http_requests": 184,
+   "errors": 0,
+   "error_rate": 0.0,
+   "status": {
+    "200": 184
+   },
+   "latency_ms": {
+    "p50": 4607,
+    "p95": 8493,
+    "p99": 9959
+   },
+   "overhead_ms": {
+    "p50": 36,
+    "p95": 2429,
+    "p99": 3317
+   },
+   "wall_s": 73.8,
+   "arrival_window_s": 15.0,
+   "server_metrics_sample": [
+    "sp_llm_inflight 0.0",
+    "sp_ticket_outbox_pending 0.0",
+    "sp_authz_violations_total 0.0"
+   ]
+  }
+ ],
+ "when": "2026-10-12T06:21:19+00:00",
+ "caveat": "Measured against ONE server process on this machine with the DB named in --note. Replicas scale this roughly linearly until the database saturates.",
+ "note": "uvicorn x1 process, SQLite (aiosqlite), 4 vCPU sandbox, redis none, simulated model median 2.5s"
+}

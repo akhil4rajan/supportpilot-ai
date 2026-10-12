@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSo
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import metrics
 from app.auth import AuthError, VerifiedUser, issue_widget_token, verify_user_token, verify_widget_token
 from app.services import conversations as convs
 from app.services.handoff import start_handoff
@@ -116,7 +117,7 @@ async def send_message(body: MessageIn, ctx: WidgetCtx = Depends(widget_ctx)):
         raise HTTPException(422, "empty message")
     if len(text) > st.settings.max_message_chars:
         raise HTTPException(413, f"message too long (max {st.settings.max_message_chars} characters)")
-    if not st.limiter.allow(ctx.conv.id):
+    if not await st.limiter.allow(ctx.conv.id):
         raise HTTPException(429, "you're sending messages too quickly")
     new = await st.agent.handle_user_message(ctx.db, ctx.rt, ctx.conv, ctx.user, text)
     return {"messages": new, "conversation": convs.conv_out(ctx.conv)}
@@ -127,7 +128,7 @@ async def request_human(ctx: WidgetCtx = Depends(widget_ctx)):
     """The widget's explicit 'Talk to a human' button. No model involved."""
     msgs = await convs.history(ctx.db, ctx.conv.id, limit=6)
     summary = " | ".join(f"{m.role}: {m.content[:120]}" for m in msgs if m.role != "system") or "(no messages yet)"
-    await start_handoff(ctx.db, ctx.st.hub, ctx.rt, ctx.conv, "Customer pressed 'talk to a human'", summary)
+    await start_handoff(ctx.db, ctx.st.hub, ctx.rt, ctx.conv, "Customer pressed 'talk to a human'", summary, trigger="button")
     return {"conversation": convs.conv_out(ctx.conv)}
 
 
@@ -144,8 +145,12 @@ async def widget_ws(ws: WebSocket):
             await ws.close(code=4401)
             return
     await ws.accept()
-    with st.hub.subscribe_conversation(ctx.conv.id) as q:
-        try:
-            await pump(ws, q)
-        except WebSocketDisconnect:
-            pass
+    metrics.WS_CONNECTIONS.labels("customer").inc()
+    try:
+        with st.hub.subscribe_conversation(ctx.conv.id) as q:
+            try:
+                await pump(ws, q)
+            except WebSocketDisconnect:
+                pass
+    finally:
+        metrics.WS_CONNECTIONS.labels("customer").dec()

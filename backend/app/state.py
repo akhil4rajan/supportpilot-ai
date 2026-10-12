@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from app.agent.orchestrator import SupportAgent
 from app.config import Settings
 from app.db import Database
-from app.services.ratelimit import RateLimiter
 from app.services.realtime import Hub
 from app.tenancy.registry import TenantRegistry
 
@@ -17,4 +17,5 @@ class AppState:
     registry: TenantRegistry
     hub: Hub
     agent: SupportAgent
-    limiter: RateLimiter
+    limiter: Any  # RateLimiter | RedisRateLimiter (async allow())
+    redis: Any = None

@@ -31,3 +31,13 @@ include = ["app*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]
+core = "sysmon"          # the default tracer under-reports async code run on the test client's loop thread (needs Python >= 3.12)
+omit = ["app/api/dev.py"]  # dev-only token minter; never mounted in prod
+
+[tool.coverage.report]
+fail_under = 88
+show_missing = true
+skip_covered = true

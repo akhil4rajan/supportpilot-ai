@@ -8,8 +8,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
+      - name: Install Redis (integration tests use a real redis-server)
+        run: sudo apt-get update && sudo apt-get install -y redis-server
       - run: pip install -e ".[dev]"
-      - run: python -m pytest -q
+      - name: Unit + integration tests with coverage gate (fail_under in pyproject.toml)
+        run: python -m pytest -q --cov --cov-report=json:coverage.json
+      - name: Fast eval gates (retrieval, security, resilience, smoke) - fails the build on any FAIL
+        run: python -m evals.run
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: eval-report-fast, path: backend/evals/reports/report.md }
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
