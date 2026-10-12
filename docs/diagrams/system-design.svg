@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1090" width="1700" height="1090" font-family="Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif" role="img" aria-labelledby="t d">
+<title id="t">SupportPilot production system design</title><desc id="d">Clients, edge, stateless API tier with outbox workers, data tier, external services and observability, sized for 30,000 conversations per day.</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker><marker id="b" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#334155"/></marker></defs>
+<rect width="1700" height="1090" fill="#ffffff"/>
+<text x="30" y="40" font-size="24" font-weight="800" fill="#0f172a">SupportPilot · production system design</text>
+<text x="30" y="64" font-size="13.5" fill="#475569">Target architecture for ≈30,000 support conversations/day. Design point = 2× the busiest minute. Numbers: capacity/model.py · measurements: docs/SCALING.md §9.</text>
+<text x="30" y="100" font-size="12" font-weight="800" letter-spacing="1.5" fill="#94a3b8">1 · CLIENTS</text>
+<text x="350" y="100" font-size="12" font-weight="800" letter-spacing="1.5" fill="#94a3b8">2 · EDGE</text>
+<text x="680" y="100" font-size="12" font-weight="800" letter-spacing="1.5" fill="#94a3b8">3 · STATELESS API TIER + WORKERS</text>
+<text x="1190" y="100" font-size="12" font-weight="800" letter-spacing="1.5" fill="#94a3b8">4 · DATA TIER</text>
+<text x="1510" y="708" font-size="12" font-weight="800" letter-spacing="1.5" fill="#94a3b8">5 · EXTERNAL</text>
+<rect x="30" y="118" width="280" height="112" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.6"/>
+<text x="42" y="142" font-size="14.5" font-weight="700" fill="#1e1b4b">Customer website / app</text>
+<text x="42" y="161" font-size="12" fill="#1e1b4b" opacity=".88">Embeds widget.js (React, Shadow DOM)</text>
+<text x="42" y="180" font-size="12" fill="#1e1b4b" opacity=".88">REST for turns; WebSocket for live</text>
+<text x="42" y="199" font-size="12" fill="#1e1b4b" opacity=".88">agent replies and status</text>
+<rect x="30" y="262" width="280" height="96" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.6"/>
+<text x="42" y="286" font-size="14.5" font-weight="700" fill="#1e1b4b">Customer&#x27;s own backend</text>
+<text x="42" y="305" font-size="12" fill="#1e1b4b" opacity=".88">Authenticates the shopper and mints a</text>
+<text x="42" y="324" font-size="12" fill="#1e1b4b" opacity=".88">short-lived signed user token</text>
+<text x="42" y="343" font-size="12" fill="#1e1b4b" opacity=".88">(HS256, aud=supportpilot, exp ≤ 1 h)</text>
+<rect x="30" y="392" width="280" height="96" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.6"/>
+<text x="42" y="416" font-size="14.5" font-weight="700" fill="#1e1b4b">Human support agents</text>
+<text x="42" y="435" font-size="12" fill="#1e1b4b" opacity=".88">Agent console (React): queue, claim,</text>
+<text x="42" y="454" font-size="12" fill="#1e1b4b" opacity=".88">reply, resolve, return-to-bot</text>
+<text x="42" y="473" font-size="12" fill="#1e1b4b" opacity=".88">Per-agent keys today; SSO on roadmap</text>
+<rect x="350" y="118" width="280" height="76" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
+<text x="362" y="142" font-size="14.5" font-weight="700" fill="#0f172a">CDN</text>
+<text x="362" y="161" font-size="12" fill="#0f172a" opacity=".88">widget.js · console · demo site</text>
+<text x="362" y="180" font-size="12" fill="#0f172a" opacity=".88">immutable, versioned assets</text>
+<rect x="350" y="218" width="280" height="76" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
+<text x="362" y="242" font-size="14.5" font-weight="700" fill="#0f172a">WAF · DDoS · bot filter</text>
+<text x="362" y="261" font-size="12" fill="#0f172a" opacity=".88">per-IP limits, geo/ASN rules,</text>
+<text x="362" y="280" font-size="12" fill="#0f172a" opacity=".88">request-size caps</text>
+<rect x="350" y="318" width="280" height="170" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.6"/>
+<text x="362" y="342" font-size="14.5" font-weight="700" fill="#0f172a">L7 load balancer</text>
+<text x="362" y="361" font-size="12" fill="#0f172a" opacity=".88">TLS termination, HTTP/2, WebSocket</text>
+<text x="362" y="380" font-size="12" fill="#0f172a" opacity=".88">readiness → /readyz (drains bad pods)</text>
+<text x="362" y="399" font-size="12" fill="#0f172a" opacity=".88">no sticky sessions: Redis fans events</text>
+<text x="362" y="418" font-size="12" fill="#0f172a" opacity=".88">out across pods</text>
+<text x="362" y="437" font-size="12" fill="#0f172a" opacity=".88">idle timeout &gt; client WS ping (25 s)</text>
+<rect x="680" y="112" width="470" height="560" rx="14" fill="#ecfdf5" fill-opacity=".35" stroke="#10b981" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="694" y="134" font-size="13" font-weight="700" fill="#064e3b">API Deployment (≥3 pods, 3 AZs) + Outbox workers</text>
+<rect x="696" y="140" width="438" height="66" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.6"/>
+<text x="708" y="164" font-size="14.5" font-weight="700" fill="#064e3b">REST + WebSocket handlers (FastAPI)</text>
+<text x="708" y="183" font-size="12" fill="#064e3b" opacity=".88">widget · agent console · admin · /metrics /healthz /readyz</text>
+<rect x="696" y="218" width="438" height="96" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.6"/>
+<text x="708" y="242" font-size="14.5" font-weight="700" fill="#064e3b">Orchestrator (tool-use loop)</text>
+<text x="708" y="261" font-size="12" fill="#064e3b" opacity=".88">history → model → tools → model … (≤ 6 steps)</text>
+<text x="708" y="280" font-size="12" fill="#064e3b" opacity=".88">deterministic handoff phrases · auto-escalation</text>
+<text x="708" y="299" font-size="12" fill="#064e3b" opacity=".88">ownership enforced server-side on every tool</text>
+<rect x="696" y="326" width="438" height="80" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.6"/>
+<text x="708" y="350" font-size="14.5" font-weight="700" fill="#064e3b">LLM guard</text>
+<text x="708" y="369" font-size="12" fill="#064e3b" opacity=".88">per-pod concurrency cap · queue and call timeouts</text>
+<text x="708" y="388" font-size="12" fill="#064e3b" opacity=".88">overload ⇒ fallback model, else hand off to human</text>
+<rect x="696" y="418" width="438" height="116" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.6"/>
+<text x="708" y="442" font-size="14.5" font-weight="700" fill="#064e3b">Tenant runtime (per-customer config)</text>
+<text x="708" y="461" font-size="12" fill="#064e3b" opacity=".88">KB index (BM25, in memory) · persona · branding</text>
+<text x="708" y="480" font-size="12" fill="#064e3b" opacity=".88">order provider (demo|HTTP) · ticket provider (Jira)</text>
+<text x="708" y="499" font-size="12" fill="#064e3b" opacity=".88">allowed origins · agent accounts</text>
+<text x="708" y="518" font-size="12" fill="#064e3b" opacity=".88">vector/hybrid index for huge KBs: roadmap</text>
+<rect x="696" y="546" width="438" height="112" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.6"/>
+<text x="708" y="570" font-size="14.5" font-weight="700" fill="#064e3b">Outbox worker Deployment (≥2 pods)</text>
+<text x="708" y="589" font-size="12" fill="#064e3b" opacity=".88">drains ticket_outbox: backoff 30 s → 1 h</text>
+<text x="708" y="608" font-size="12" fill="#064e3b" opacity=".88">atomic claim (UPDATE … WHERE pending)</text>
+<text x="708" y="627" font-size="12" fill="#064e3b" opacity=".88">Jira idempotency label · dead-letter ⇒ human</text>
+<text x="708" y="646" font-size="12" fill="#064e3b" opacity=".88">stops being needed only if Jira never fails</text>
+<rect x="1190" y="112" width="480" height="560" rx="14" fill="#fff7ed" fill-opacity=".35" stroke="#f97316" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="1204" y="134" font-size="13" font-weight="700" fill="#7c2d12">Data tier (managed services)</text>
+<rect x="1206" y="140" width="448" height="62" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6"/>
+<text x="1218" y="164" font-size="14.5" font-weight="700" fill="#7c2d12">PgBouncer</text>
+<text x="1218" y="183" font-size="12" fill="#7c2d12" opacity=".88">transaction pooling: pods × pool ≪ max_connections</text>
+<rect x="1206" y="214" width="448" height="126" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6"/>
+<text x="1218" y="238" font-size="14.5" font-weight="700" fill="#7c2d12">PostgreSQL primary (HA)</text>
+<text x="1218" y="257" font-size="12" fill="#7c2d12" opacity=".88">conversations · messages · tickets · ticket_outbox · audit_log</text>
+<text x="1218" y="276" font-size="12" fill="#7c2d12" opacity=".88">synchronous standby in 2nd AZ · PITR backups</text>
+<text x="1218" y="295" font-size="12" fill="#7c2d12" opacity=".88">monthly partitions for messages/audit (recommended)</text>
+<rect x="1206" y="352" width="448" height="62" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6"/>
+<text x="1218" y="376" font-size="14.5" font-weight="700" fill="#7c2d12">Read replica(s)</text>
+<text x="1218" y="395" font-size="12" fill="#7c2d12" opacity=".88">agent queue lists · analytics · exports</text>
+<rect x="1206" y="426" width="448" height="96" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6"/>
+<text x="1218" y="450" font-size="14.5" font-weight="700" fill="#7c2d12">Redis (HA, managed)</text>
+<text x="1218" y="469" font-size="12" fill="#7c2d12" opacity=".88">pub/sub: cross-pod WebSocket fan-out · shared rate limits</text>
+<text x="1218" y="488" font-size="12" fill="#7c2d12" opacity=".88">outage ⇒ same-pod delivery only; limiter fails open</text>
+<rect x="1206" y="534" width="448" height="62" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6"/>
+<text x="1218" y="558" font-size="14.5" font-weight="700" fill="#7c2d12">Object storage</text>
+<text x="1218" y="577" font-size="12" fill="#7c2d12" opacity=".88">KB source docs · backups · transcript archive (retention policy)</text>
+<rect x="1206" y="608" width="448" height="50" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="1218" y="632" font-size="14.5" font-weight="700" fill="#7c2d12">Vector / search index (optional)</text>
+<rect x="680" y="722" width="215" height="128" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.6"/>
+<text x="692" y="746" font-size="14.5" font-weight="700" fill="#831843">Model API (Anthropic)</text>
+<text x="692" y="765" font-size="12" fill="#831843" opacity=".88">primary + optional fallback</text>
+<text x="692" y="784" font-size="12" fill="#831843" opacity=".88">(ANTHROPIC_FALLBACK_MODEL)</text>
+<text x="692" y="803" font-size="12" fill="#831843" opacity=".88">prompt caching on tenant</text>
+<text x="692" y="822" font-size="12" fill="#831843" opacity=".88">prefix · quota ≥ 2× peak</text>
+<rect x="905" y="722" width="200" height="128" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.6"/>
+<text x="917" y="746" font-size="14.5" font-weight="700" fill="#831843">Jira Cloud</text>
+<text x="917" y="765" font-size="12" fill="#831843" opacity=".88">created via outbox only</text>
+<text x="917" y="784" font-size="12" fill="#831843" opacity=".88">global cap ≈ 5 req/s</text>
+<text x="917" y="803" font-size="12" fill="#831843" opacity=".88">honours 429 / Retry-After</text>
+<rect x="1115" y="722" width="215" height="128" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.6"/>
+<text x="1127" y="746" font-size="14.5" font-weight="700" fill="#831843">Customer order APIs</text>
+<text x="1127" y="765" font-size="12" fill="#831843" opacity=".88">per-tenant HTTP, scoped by</text>
+<text x="1127" y="784" font-size="12" fill="#831843" opacity=".88">the verified customer id</text>
+<text x="1127" y="803" font-size="12" fill="#831843" opacity=".88">timeouts + circuit breaker</text>
+<rect x="1340" y="722" width="160" height="128" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.6"/>
+<text x="1352" y="746" font-size="14.5" font-weight="700" fill="#831843">Slack · paging</text>
+<text x="1352" y="765" font-size="12" fill="#831843" opacity=".88">handoff pings</text>
+<text x="1352" y="784" font-size="12" fill="#831843" opacity=".88">alerts</text>
+<rect x="1510" y="722" width="160" height="128" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.6"/>
+<text x="1522" y="746" font-size="14.5" font-weight="700" fill="#831843">Secrets / KMS</text>
+<text x="1522" y="765" font-size="12" fill="#831843" opacity=".88">token secrets, keys,</text>
+<text x="1522" y="784" font-size="12" fill="#831843" opacity=".88">rotation w/o redeploy</text>
+<rect x="30" y="880" width="1640" height="150" rx="14" fill="#f0f9ff" fill-opacity=".35" stroke="#0ea5e9" stroke-width="1.4" stroke-dasharray="8 5"/>
+<text x="44" y="902" font-size="13" font-weight="700" fill="#0c4a6e">Observability &amp; release safety</text>
+<rect x="46" y="906" width="392" height="112" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.6"/>
+<text x="58" y="930" font-size="14.5" font-weight="700" fill="#0c4a6e">Metrics (Prometheus / OTel)</text>
+<text x="58" y="949" font-size="12" fill="#0c4a6e" opacity=".88">sp_turns_total · sp_turn_seconds · sp_llm_inflight</text>
+<text x="58" y="968" font-size="12" fill="#0c4a6e" opacity=".88">sp_llm_tokens_total{cache_read} · sp_handoffs_total</text>
+<text x="58" y="987" font-size="12" fill="#0c4a6e" opacity=".88">sp_ticket_outbox_pending · sp_authz_violations_total</text>
+<rect x="450" y="906" width="392" height="112" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.6"/>
+<text x="462" y="930" font-size="14.5" font-weight="700" fill="#0c4a6e">Dashboards &amp; alerts (SLOs)</text>
+<text x="462" y="949" font-size="12" fill="#0c4a6e" opacity=".88">turn p95 &lt; 12 s · error rate &lt; 0.1 % · 99.9 % avail.</text>
+<text x="462" y="968" font-size="12" fill="#0c4a6e" opacity=".88">model overload rate · outbox age and depth</text>
+<text x="462" y="987" font-size="12" fill="#0c4a6e" opacity=".88">authz violation ≥ 1 ⇒ page · handoff-rate drift</text>
+<rect x="854" y="906" width="392" height="112" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.6"/>
+<text x="866" y="930" font-size="14.5" font-weight="700" fill="#0c4a6e">Logs &amp; traces</text>
+<text x="866" y="949" font-size="12" fill="#0c4a6e" opacity=".88">JSON logs, no tokens/PII · audit_log in Postgres</text>
+<text x="866" y="968" font-size="12" fill="#0c4a6e" opacity=".88">(every order lookup and ticket)</text>
+<text x="866" y="987" font-size="12" fill="#0c4a6e" opacity=".88">OpenTelemetry traces: roadmap</text>
+<rect x="1258" y="906" width="396" height="112" rx="10" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.6"/>
+<text x="1270" y="930" font-size="14.5" font-weight="700" fill="#0c4a6e">Release safety</text>
+<text x="1270" y="949" font-size="12" fill="#0c4a6e" opacity=".88">CI eval gate (python -m evals.run) · smoke test</text>
+<text x="1270" y="968" font-size="12" fill="#0c4a6e" opacity=".88">canary 5 → 25 → 100 % with auto-rollback</text>
+<text x="1270" y="987" font-size="12" fill="#0c4a6e" opacity=".88">per-tenant model/prompt canary: roadmap</text>
+<path d="M 310,150 L 350,150" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="330" y="130" font-size="11.5" font-weight="600" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">script</text>
+<path d="M 310,190 L 330,190 L 330,253 L 350,253" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="322" y="214" font-size="11.5" font-weight="600" fill="#334155" text-anchor="end" paint-order="stroke" stroke="#fff" stroke-width="4">HTTPS+WSS</text>
+<path d="M 170,262 L 170,230" fill="none" stroke="#6366f1" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#a)"/>
+<text x="240" y="250" font-size="11.5" font-weight="600" fill="#6366f1" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">signed token</text>
+<path d="M 310,440 L 330,440 L 330,270 L 350,270" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<path d="M 490,194 L 490,218" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<path d="M 490,294 L 490,318" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<path d="M 630,400 L 680,400" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<path d="M 1150,170 L 1190,170" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1170" y="162" font-size="11.5" font-weight="600" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">SQL</text>
+<path d="M 1150,470 L 1190,470" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1170" y="462" font-size="11.5" font-weight="600" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">pub/sub</text>
+<path d="M 1150,565 L 1190,565" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1170" y="557" font-size="11.5" font-weight="600" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">docs</text>
+<path d="M 787,672 L 787,722" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="800" y="700" font-size="11.5" font-weight="600" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="4">model calls</text>
+<path d="M 1005,672 L 1005,722" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1018" y="700" font-size="11.5" font-weight="600" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="4">create issue</text>
+<path d="M 1130,672 L 1130,722" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1140" y="712" font-size="11.5" font-weight="600" fill="#334155" text-anchor="start" paint-order="stroke" stroke="#fff" stroke-width="4">GET orders</text>
+<path d="M 1150,610 L 1170,610 L 1170,692 L 1420,692 L 1420,722" fill="none" stroke="#334155" stroke-width="1.7" marker-end="url(#a)"/>
+<text x="1300" y="686" font-size="11.5" font-weight="600" fill="#334155" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">webhooks</text>
+<circle cx="340" cy="150" r="11" fill="#0f172a"/><text x="340" y="154.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+<circle cx="340" cy="253" r="11" fill="#0f172a"/><text x="340" y="257.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<circle cx="655" cy="388" r="11" fill="#0f172a"/><text x="655" y="392.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+<circle cx="1170" cy="190" r="11" fill="#0f172a"/><text x="1170" y="194.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+<circle cx="760" cy="700" r="11" fill="#0f172a"/><text x="760" y="704.5" font-size="12" font-weight="700" fill="#fff" text-anchor="middle">5</text>
+<text x="30" y="1060" font-size="12" fill="#475569">① widget loads from the CDN  ② customer backend mints a user token; widget opens a session via WAF/LB  ③ any pod verifies it and runs the turn  ④ state → Postgres, events → Redis  ⑤ model / order / ticket calls as needed.</text>
+<text x="30" y="1078" font-size="12" fill="#475569">Design point (2× peak): 5 conv/s · ≈33 turns/s · ≈205 model calls in flight · ≈855 open chats. Pods = max(throughput, model slots) + 1: 5 at the default 64-call cap.</text>
+</svg>

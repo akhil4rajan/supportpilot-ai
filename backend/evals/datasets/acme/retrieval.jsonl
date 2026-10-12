@@ -1,0 +1,56 @@
+{"id":"ship-01","q":"How long does standard shipping take?","source":"shipping.md","heading":"Delivery times","kind":"direct"}
+{"id":"ship-02","q":"when will my package arrive if I choose express","source":"shipping.md","heading":"Delivery times","kind":"paraphrase"}
+{"id":"ship-03","q":"do you deliver to Alaska or Hawaii","source":"shipping.md","heading":"Delivery times","kind":"direct"}
+{"id":"ship-04","q":"is shipping free","source":"shipping.md","heading":"Shipping costs","kind":"direct"}
+{"id":"ship-05","q":"how much does express delivery cost","source":"shipping.md","heading":"Shipping costs","kind":"direct"}
+{"id":"ship-06","q":"what is the minimum order for free shipping","source":"shipping.md","heading":"Shipping costs","kind":"paraphrase"}
+{"id":"ship-07","q":"how can I track my parcel","source":"shipping.md","heading":"Tracking","kind":"paraphrase"}
+{"id":"ship-08","q":"will I get a tracking number","source":"shipping.md","heading":"Tracking","kind":"direct"}
+{"id":"ship-09","q":"do you ship to Canada","source":"shipping.md","heading":"International","kind":"direct"}
+{"id":"ship-10","q":"who pays customs duties on international orders","source":"shipping.md","heading":"International","kind":"direct"}
+{"id":"ship-11","q":"do you ship to the UK and how long does it take","source":"shipping.md","heading":"International","kind":"direct"}
+{"id":"ret-01","q":"what's your return policy","source":"returns.md","heading":"Return window","kind":"direct"}
+{"id":"ret-02","q":"how many days do I have to send something back","source":"returns.md","heading":"Return window","kind":"paraphrase"}
+{"id":"ret-03","q":"can I return sale items","source":"returns.md","heading":"Return window","kind":"direct"}
+{"id":"ret-04","q":"how do I start a return","source":"returns.md","heading":"How to start","kind":"direct"}
+{"id":"ret-05","q":"do I have to pay for return postage","source":"returns.md","heading":"How to start","kind":"paraphrase"}
+{"id":"ret-06","q":"where do I print the prepaid return label","source":"returns.md","heading":"How to start","kind":"direct"}
+{"id":"ret-07","q":"how long do refunds take","source":"returns.md","heading":"Refund timing","kind":"direct"}
+{"id":"ret-08","q":"when will I get my money back","source":"returns.md","heading":"Refund timing","kind":"paraphrase"}
+{"id":"ret-09","q":"my refund hasn't shown up on my card yet","source":"returns.md","heading":"Refund timing","kind":"paraphrase"}
+{"id":"ret-10","q":"the item I received was damaged","source":"returns.md","heading":"Damaged","kind":"paraphrase"}
+{"id":"ret-11","q":"I received the wrong product","source":"returns.md","heading":"Damaged","kind":"direct"}
+{"id":"ret-12","q":"what should I do if my order arrived broken","source":"returns.md","heading":"Damaged","kind":"paraphrase"}
+{"id":"acc-01","q":"I forgot my password","source":"account.md","heading":"password","kind":"direct"}
+{"id":"acc-02","q":"how do I reset my password","source":"account.md","heading":"password","kind":"direct"}
+{"id":"acc-03","q":"the password reset email never arrived","source":"account.md","heading":"password","kind":"paraphrase"}
+{"id":"acc-04","q":"how do I change my email address","source":"account.md","heading":"email or address","kind":"direct"}
+{"id":"acc-05","q":"update my saved shipping address","source":"account.md","heading":"email or address","kind":"paraphrase"}
+{"id":"acc-06","q":"which credit cards do you accept","source":"account.md","heading":"payment methods","kind":"paraphrase"}
+{"id":"acc-07","q":"can I pay with PayPal","source":"account.md","heading":"payment methods","kind":"direct"}
+{"id":"acc-08","q":"do you take Apple Pay","source":"account.md","heading":"payment methods","kind":"direct"}
+{"id":"acc-09","q":"can I use a gift card","source":"account.md","heading":"payment methods","kind":"direct"}
+{"id":"acc-10","q":"how do I cancel my order","source":"account.md","heading":"Cancelling","kind":"direct"}
+{"id":"acc-11","q":"can I still cancel after it has shipped","source":"account.md","heading":"Cancelling","kind":"paraphrase"}
+{"id":"war-01","q":"how long is the warranty","source":"warranty.md","heading":"Warranty","kind":"direct"}
+{"id":"war-02","q":"what does the warranty cover","source":"warranty.md","heading":"Warranty","kind":"direct"}
+{"id":"war-03","q":"how do I make a warranty claim","source":"warranty.md","heading":"warranty claim","kind":"direct"}
+{"id":"war-04","q":"how should I wash the Trail Runner jacket","source":"warranty.md","heading":"Washing","kind":"direct"}
+{"id":"war-05","q":"can I tumble dry the jacket","source":"warranty.md","heading":"Washing","kind":"paraphrase"}
+{"id":"war-06","q":"my jacket has a manufacturing defect, am I covered","source":"warranty.md","heading":"Warranty","kind":"paraphrase"}
+{"id":"oos-01","q":"who won the football world cup in 2018","kind":"oos"}
+{"id":"oos-02","q":"what's the weather like in Boston today","kind":"oos"}
+{"id":"oos-03","q":"do you sell tents","kind":"oos"}
+{"id":"oos-04","q":"are you hiring right now","kind":"oos"}
+{"id":"oos-05","q":"who is the CEO of your company","kind":"oos"}
+{"id":"oos-06","q":"do you have a retail store in Paris","kind":"oos"}
+{"id":"oos-07","q":"do you offer price matching","kind":"oos_near"}
+{"id":"oos-08","q":"can I pay with bitcoin","kind":"oos_near"}
+{"id":"oos-09","q":"how do I become an affiliate partner","kind":"oos"}
+{"id":"oos-10","q":"what is the capital of France","kind":"oos"}
+{"id":"oos-11","q":"do you offer student discounts","kind":"oos_near"}
+{"id":"oos-12","q":"what is your phone number","kind":"oos"}
+{"id":"oos-13","q":"do you ship to Australia","kind":"oos_near"}
+{"id":"oos-14","q":"is your company publicly traded","kind":"oos"}
+{"id":"oos-15","q":"can you recommend a good hiking trail near Denver","kind":"oos"}
+{"id":"oos-16","q":"how much is the Summit Backpack","kind":"oos_near"}

@@ -1,0 +1,123 @@
+{
+ "mode": "ramp",
+ "requirement": {
+  "conversations_per_day": 30000,
+  "design_turns_per_s": 32.5
+ },
+ "sustained_turns_per_s_per_process": 40.5,
+ "gates": {
+  "error_rate": 0.0,
+  "p95_overhead_ms": 362,
+  "capacity_ratio": 1.246
+ },
+ "steps": [
+  {
+   "conv_per_s_offered": 4.0,
+   "turns_per_s_steady": 27.5,
+   "conversations": 302,
+   "turns": 1945,
+   "turns_per_conversation": 6.44,
+   "handoffs": 36,
+   "http_requests": 2247,
+   "errors": 0,
+   "error_rate": 0.0,
+   "status": {
+    "200": 2247
+   },
+   "latency_ms": {
+    "p50": 4143,
+    "p95": 7977,
+    "p99": 9998
+   },
+   "overhead_ms": {
+    "p50": 36,
+    "p95": 127,
+    "p99": 304
+   },
+   "window": {
+    "arrival_s": 75.1,
+    "warmup_s": 45,
+    "steady_samples": 829,
+    "total_wall_s": 133.0
+   },
+   "server_metrics_sample": [
+    "sp_llm_inflight 0.0",
+    "sp_ticket_outbox_pending 0.0",
+    "sp_authz_violations_total 0.0"
+   ]
+  },
+  {
+   "conv_per_s_offered": 6.0,
+   "turns_per_s_steady": 40.5,
+   "conversations": 485,
+   "turns": 3148,
+   "turns_per_conversation": 6.49,
+   "handoffs": 60,
+   "http_requests": 3633,
+   "errors": 0,
+   "error_rate": 0.0,
+   "status": {
+    "200": 3633
+   },
+   "latency_ms": {
+    "p50": 4463,
+    "p95": 8001,
+    "p99": 10131
+   },
+   "overhead_ms": {
+    "p50": 70,
+    "p95": 362,
+    "p99": 994
+   },
+   "window": {
+    "arrival_s": 75.1,
+    "warmup_s": 45,
+    "steady_samples": 1218,
+    "total_wall_s": 130.6
+   },
+   "server_metrics_sample": [
+    "sp_llm_inflight 0.0",
+    "sp_ticket_outbox_pending 0.0",
+    "sp_authz_violations_total 0.0"
+   ]
+  },
+  {
+   "conv_per_s_offered": 9.0,
+   "turns_per_s_steady": 51.5,
+   "conversations": 653,
+   "turns": 4089,
+   "turns_per_conversation": 6.26,
+   "handoffs": 117,
+   "http_requests": 4742,
+   "errors": 0,
+   "error_rate": 0.0,
+   "status": {
+    "200": 4742
+   },
+   "latency_ms": {
+    "p50": 4451,
+    "p95": 8319,
+    "p99": 10241
+   },
+   "overhead_ms": {
+    "p50": 237,
+    "p95": 1211,
+    "p99": 2089
+   },
+   "window": {
+    "arrival_s": 75.0,
+    "warmup_s": 45,
+    "steady_samples": 1548,
+    "total_wall_s": 128.0
+   },
+   "server_metrics_sample": [
+    "sp_llm_inflight 0.0",
+    "sp_ticket_outbox_pending 0.0",
+    "sp_authz_violations_total 0.0"
+   ]
+  }
+ ],
+ "when": "2026-10-12T06:48:32+00:00",
+ "caveat": "Measured against ONE server process on this machine with the DB named in --note. Replicas scale this roughly linearly until the database saturates.",
+ "note": "uvicorn x1 process, SQLite (aiosqlite) on local disk, 4 vCPU sandbox shared with the load generator, no Redis, simulated model median 2.5s, LLM_MAX_CONCURRENCY=1000"
+}

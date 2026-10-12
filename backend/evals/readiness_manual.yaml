@@ -1,0 +1,15 @@
+# Items no script can verify. Each needs an owner, a date and evidence (link/ticket/doc). `status` must be `done` for GO.
+# Intentionally ALL OPEN in the repo: they are decisions/evidence of the team running the launch, not of the codebase.
+items:
+  - {id: M-1, area: Quality, item: "Judge calibration set re-labelled by >=2 support leads on REAL transcripts (kappa >= 0.7 between humans)", status: open, owner: "", evidence: ""}
+  - {id: M-2, area: Quality, item: "Eval datasets extended with >=200 real (anonymised) customer questions per tenant, incl. last 90 days' top intents", status: open, owner: "", evidence: ""}
+  - {id: M-3, area: Quality, item: "Shadow mode: bot drafts, humans send, for >=2 weeks. Draft acceptance >= 70% with no unsafe drafts", status: open, owner: "", evidence: ""}
+  - {id: M-4, area: Rollout, item: "Canary: 5% -> 25% -> 100% of traffic with automatic rollback on the online guardrails in docs/EVALUATION.md section 9", status: open, owner: "", evidence: ""}
+  - {id: M-5, area: Security, item: "Independent penetration test / threat-model review incl. prompt-injection and token handling; criticals closed", status: open, owner: "", evidence: ""}
+  - {id: M-6, area: Security, item: "Secrets in a secret manager, rotation procedure tested (user-token secret, agent keys, Jira token, model API key)", status: open, owner: "", evidence: ""}
+  - {id: M-7, area: Privacy, item: "DPIA / privacy review done: retention period for transcripts, PII redaction in logs/tickets, DPA with model provider", status: open, owner: "", evidence: ""}
+  - {id: M-8, area: Legal, item: "AI disclosure in widget approved; terms updated; human-escalation promise matches staffing hours", status: open, owner: "", evidence: ""}
+  - {id: M-9, area: Operations, item: "Dashboards + alerts live for SLOs (docs/SCALING.md section 10); on-call rota agreed; runbooks exercised in a game day", status: open, owner: "", evidence: ""}
+  - {id: M-10, area: Operations, item: "DR drill: restore Postgres from backup to a clean region; RPO/RTO measured and within target", status: open, owner: "", evidence: ""}
+  - {id: M-11, area: Operations, item: "Model-provider quota/rate limits raised for 2x peak; fallback model configured and tested", status: open, owner: "", evidence: ""}
+  - {id: M-12, area: Operations, item: "Human agent staffing plan covers expected handoff volume (docs/SCALING.md section 2) at peak hour", status: open, owner: "", evidence: ""}
