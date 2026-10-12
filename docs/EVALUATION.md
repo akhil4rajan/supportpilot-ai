@@ -24,7 +24,7 @@ Contents: [1 Principles](#1-principles) · [2 What is tested, by layer](#2-what-
 
 | Layer | Question | Method | Needs model API? | Where it runs | Time / cost |
 |---|---|---|---|---|---|
-| **L0 Unit + integration** | Does each component do what it says? | pytest, 129 tests, real Redis, real HTTP stack in-process; coverage gate ≥ 88 % (measured 92.7 %) | No | every PR | ~1 min |
+| **L0 Unit + integration** | Does each component do what it says? | pytest, 137 tests, real Redis, real HTTP stack in-process; coverage gate ≥ 88 % (measured 93.9 %) | No | every PR | ~1 min |
 | **L1 Security (platform)** | Can an attacker — or a misbehaving model — cross an authorization boundary? | `evals.suites.security` — 69 generated cases, **zero tolerance** | No | every PR | ~4 s |
 | **L2 Retrieval** | Does the right passage reach the model? Does the system know when it has nothing? | `retrieval`, `retrieval_holdout` — 56 + 34 labelled questions | No | every PR | <1 s |
 | **L3 Resilience** | When dependencies fail, do customers still get served and nothing is lost? | `evals.suites.resilience` — 18 fault-injection scenarios | No | every PR | ~2 s |
@@ -147,7 +147,7 @@ Open-loop Poisson arrivals (customers do not slow down because the server did), 
 > The load test has already paid for itself: its first run exposed a **database connection held across model calls** that capped concurrency at the pool size (15). It is fixed and has a regression test — see SCALING.md §9.
 
 ### 3.8 Unit/integration coverage
-`pytest --cov` with a `fail_under = 88` gate (measured 92.7 %). Coverage is a smoke alarm for *untested code*, not proof of correctness; the first coverage run found the customer-facing HTTP order provider at 29 % and the orchestrator's failure paths untested — both are now covered. (Coverage uses the `sysmon` core: the default tracer under-reports async code run on the test client's loop thread.)
+`pytest --cov` with a `fail_under = 88` gate (measured 93.9 %). Coverage is a smoke alarm for *untested code*, not proof of correctness; the first coverage run found the customer-facing HTTP order provider at 29 % and the orchestrator's failure paths untested — both are now covered. (Coverage uses the `sysmon` core: the default tracer under-reports async code run on the test client's loop thread.)
 
 ## 4. Statistics rules
 
@@ -289,9 +289,9 @@ Measured by the commands above in the build environment on this commit. The **mo
 | RS-2 smoke | ✅ 14/14 | in-process self-check; must be re-run against staging |
 | QA-1 held-out hit@3 | ✅ 1.00 (CI-low 0.86) | |
 | QA-2 held-out readable | ✅ 0.917 (CI-low 0.74) | 2 of 24 answerable questions got no passage: "send back a pair of socks", "stop the order" |
-| CV-1 coverage | ✅ 92.7 % | |
+| CV-1 coverage | ✅ 93.9 % | |
 | SEC-2/3/4, QA-3…7, HO-1/2, TK-1, JG-1/2 | ⏭️ skipped | need `ANTHROPIC_API_KEY` |
-| LD-1/2/3 | see [SCALING §9](SCALING.md#9-load-test-results) | one-process SQLite measurement only; staging with Postgres still required |
+| LD-1/2/3 | ✅ error 0 %, p95 overhead 362 ms, capacity ratio 1.25 | **one process, SQLite, simulated model** — see [SCALING §9](SCALING.md#9-load-test-results); must be repeated on staging with Postgres + Redis before it counts for launch |
 | Manual M-1…M-12 | ⬜ all open | owners/evidence to be filled by the launch team |
 
 **What the evaluation has already found and fixed (illustrating why it exists):**

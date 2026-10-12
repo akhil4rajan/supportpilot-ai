@@ -45,7 +45,8 @@ class Assumptions:
     # ---- infra
     messages_bytes: int = 700                # avg stored bytes per message row (content + meta + index share)
     system_msgs_per_conv: float = 2.0
-    measured_turns_per_sec_per_replica: float = 60.0  # replace with loadtest result on your hardware + Postgres
+    measured_turns_per_sec_per_replica: float = 40.0  # MEASURED: 1 process, SQLite, 4-vCPU sandbox (loadtest ramp). Re-measure on staging with Postgres.
+    llm_max_concurrency_per_pod: int = 64   # LLM_MAX_CONCURRENCY (default). Pods needed for model concurrency = in-flight calls / this.
 
 
 def prompt_token_estimate() -> dict[str, int]:
@@ -84,7 +85,9 @@ def derive(a: Assumptions) -> dict:
         }
 
     d = block(design_conv_s)
-    replicas = math.ceil(d["turns_per_s"] / a.measured_turns_per_sec_per_replica)
+    by_throughput = math.ceil(d["turns_per_s"] / a.measured_turns_per_sec_per_replica)
+    by_model_slots = math.ceil(d["model_calls_in_flight"] / a.llm_max_concurrency_per_pod)
+    replicas = max(by_throughput, by_model_slots)
     # ---- tokens & cost per day
     calls_day = day * a.turns_per_conversation * a.llm_calls_per_turn
     in_tok = calls_day * a.input_tokens_per_call
@@ -111,8 +114,9 @@ def derive(a: Assumptions) -> dict:
         "assumptions": asdict(a),
         "demand": {"avg_conversations_per_s": round(avg_conv_s, 2), "peak": block(peak_conv_s), "design_2x_peak": d,
                    "turn_latency_s": round(turn_latency, 1), "conversation_duration_s": round(conv_duration)},
-        "compute": {"replicas_at_design_load": replicas, "replicas_recommended_min": max(3, replicas + 1),
-                    "note": "per-replica capacity is an INPUT (measured_turns_per_sec_per_replica); replace with your load-test result"},
+        "compute": {"replicas_by_throughput": by_throughput, "replicas_by_model_concurrency": by_model_slots, "replicas_at_design_load": replicas,
+                    "replicas_recommended_min": max(3, replicas + 1),
+                    "note": "per-replica throughput is an INPUT (measured_turns_per_sec_per_replica); pods = max(throughput, model slots) + 1 for N+1"},
         "tokens_per_day": {"input_total_M": round(in_tok / 1e6, 1), "output_total_M": round(out_tok / 1e6, 1), "cacheable_prefix_M": round(cacheable / 1e6, 1)},
         "model_cost_usd": cost,
         "storage": {"messages_per_day": round(msgs_day), "messages_per_year_M": round(msgs_day * 365 / 1e6, 1),
@@ -138,7 +142,7 @@ def render(d: dict) -> str:
     out = ["| " + " | ".join(map(str, r)) + " |" for r in rows]
     out.insert(1, "|---|---|---|---|")
     out += ["", f"Turn latency ≈ {de['turn_latency_s']} s; conversation lasts ≈ {de['conversation_duration_s']} s.",
-            f"Replicas at design load: {c['replicas_at_design_load']} (recommended minimum {c['replicas_recommended_min']}).",
+            f"Pods at design load: {c['replicas_at_design_load']} = max({c['replicas_by_throughput']} by throughput, {c['replicas_by_model_concurrency']} by model-concurrency slots); recommended minimum {c['replicas_recommended_min']} (N+1, ≥3 for AZ spread).",
             f"Tokens/day: {t['input_total_M']} M in ({t['cacheable_prefix_M']} M cacheable), {t['output_total_M']} M out.", "", "| Model | $/day no cache | $/day with cache | $/conversation | $/month | cache saves |", "|---|---|---|---|---|---|"]
     out += [f"| {k} | {v['per_day_no_cache']:,} | {v['per_day_with_cache']:,} | {v['per_conversation_with_cache']} | {v['per_month_with_cache']:,} | {v['cache_saving_pct']}% |" for k, v in m.items()]
     out += ["", f"Storage: {s['messages_per_day']:,} messages/day → {s['messages_per_year_M']} M/yr ≈ {s['gb_per_year']} GB/yr.",

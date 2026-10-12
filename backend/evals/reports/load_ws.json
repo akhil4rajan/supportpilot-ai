@@ -1,0 +1,16 @@
+{
+ "mode": "ws",
+ "sockets_requested": 1000,
+ "sockets_open": 1000,
+ "delivered": 1000,
+ "delivery_rate": 1.0,
+ "delivery_ms": {
+  "p50": 693,
+  "p95": 1383,
+  "p99": 2154,
+  "max": 2782
+ },
+ "ws_gauge": [
+  "sp_ws_connections{kind=\"customer\"} 0.0"
+ ]
+}

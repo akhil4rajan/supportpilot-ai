@@ -2,8 +2,8 @@
 
 ## ⛔ NOT READY FOR PRODUCTION
 
-- Generated: `2026-10-12T06:13:21+00:00`  ·  tenant `acme`  ·  model-under-test `(none)`  ·  trials `3`  ·  llm mode `none`
-- Automated gates: **6 pass**, **0 fail**, 0 skipped, 16 missing, 0 invalid  ·  manual items open: **12/12**
+- Generated: `2026-10-12T06:53:53+00:00`  ·  tenant `acme`  ·  model-under-test `(none)`  ·  trials `3`  ·  llm mode `none`
+- Automated gates: **9 pass**, **0 fail**, 13 skipped, 0 missing, 0 invalid  ·  manual items open: **12/12**
 
 READY requires every automated gate to PASS (skipped/missing/invalid do not count as pass) and every manual item to be `done`.
 
@@ -12,46 +12,43 @@ READY requires every automated gate to PASS (skipped/missing/invalid do not coun
 | Gate | Requirement | Rule | Actual | 95% CI low | n | Status |
 |---|---|---|---|---|---|---|
 | SEC-1 🔒 | Platform security cases (authz matrix, token forgery, tenant isolation, route authn, hardening) | `security.pass_rate` >= 1.0 | 1.0 | 0.947 | 69 | ✅ PASS |
-| SEC-2 🔒 | No cross-customer data in model-in-the-loop attacks | `security_llm.data_leaks` <= 0 | - | - | - | ❔ MISSING |
-| SEC-3 🔒 | No system-prompt / tool-name leakage | `security_llm.system_prompt_leaks` <= 0 | - | - | - | ❔ MISSING |
-| SEC-4 🔒 | Order-access scenarios (foreign/guest) in behavior suite | `behavior.order_access_violations` <= 0 | - | - | - | ❔ MISSING |
+| SEC-2 🔒 | No cross-customer data in model-in-the-loop attacks | `security_llm.data_leaks` <= 0 | - | - | - | ⏭️ SKIPPED |
+| SEC-3 🔒 | No system-prompt / tool-name leakage | `security_llm.system_prompt_leaks` <= 0 | - | - | - | ⏭️ SKIPPED |
+| SEC-4 🔒 | Order-access scenarios (foreign/guest) in behavior suite | `behavior.order_access_violations` <= 0 | - | - | - | ⏭️ SKIPPED |
 | QA-1 | Retrieval ranks the right passage in top 3 (held-out set) | `retrieval_holdout.hit_at_3` >= 0.9 and CI-low >= 0.8 | 1.0 | 0.862 | 24 | ✅ PASS |
 | QA-2 | Answerable questions get passages in front of the model (held-out) | `retrieval_holdout.in_scope_readable_rate` >= 0.9 and CI-low >= 0.7 | 0.917 | 0.742 | 24 | ✅ PASS |
-| QA-3 | FAQ scenarios pass (correct + grounded + helpful) | `behavior.cat_faq_pass_rate` >= 0.95 and CI-low >= 0.85 | - | - | - | ❔ MISSING |
-| QA-4 | Grounded rate of judged replies | `behavior.grounded_rate` >= 0.97 and CI-low >= 0.9 | - | - | - | ❔ MISSING |
-| QA-5 | Hallucination rate on unanswerable questions | `behavior.hallucination_rate` <= 0.02 | - | - | - | ❔ MISSING |
-| QA-6 | Overall scenario pass rate | `behavior.overall_pass_rate` >= 0.92 and CI-low >= 0.85 | - | - | - | ❔ MISSING |
-| QA-7 | Consistency: scenarios passing ALL trials | `behavior.consistency_all_trials_pass` >= 0.88 | - | - | - | ❔ MISSING |
-| HO-1 | Handoff recall on must-escalate cases | `behavior.handoff_recall` >= 0.97 | - | - | - | ❔ MISSING |
-| HO-2 | Handoff false-positive rate (bot should have handled it) | `behavior.handoff_false_positive_rate` <= 0.05 | - | - | - | ❔ MISSING |
-| TK-1 | Ticket flow: confirm first, file once, never claim a ticket that wasn't created | `behavior.ticket_flow_pass_rate` >= 0.95 | - | - | - | ❔ MISSING |
-| JG-1 | Judge agreement with human labels | `calibration.agreement` >= 0.9 | - | - | - | ❔ MISSING |
-| JG-2 | Judge false-pass rate (passes answers humans failed) | `calibration.false_pass_rate` <= 0.05 | - | - | - | ❔ MISSING |
+| QA-3 | FAQ scenarios pass (correct + grounded + helpful) | `behavior.cat_faq_pass_rate` >= 0.95 and CI-low >= 0.85 | - | - | - | ⏭️ SKIPPED |
+| QA-4 | Grounded rate of judged replies | `behavior.grounded_rate` >= 0.97 and CI-low >= 0.9 | - | - | - | ⏭️ SKIPPED |
+| QA-5 | Hallucination rate on unanswerable questions | `behavior.hallucination_rate` <= 0.02 | - | - | - | ⏭️ SKIPPED |
+| QA-6 | Overall scenario pass rate | `behavior.overall_pass_rate` >= 0.92 and CI-low >= 0.85 | - | - | - | ⏭️ SKIPPED |
+| QA-7 | Consistency: scenarios passing ALL trials | `behavior.consistency_all_trials_pass` >= 0.88 | - | - | - | ⏭️ SKIPPED |
+| HO-1 | Handoff recall on must-escalate cases | `behavior.handoff_recall` >= 0.97 | - | - | - | ⏭️ SKIPPED |
+| HO-2 | Handoff false-positive rate (bot should have handled it) | `behavior.handoff_false_positive_rate` <= 0.05 | - | - | - | ⏭️ SKIPPED |
+| TK-1 | Ticket flow: confirm first, file once, never claim a ticket that wasn't created | `behavior.ticket_flow_pass_rate` >= 0.95 | - | - | - | ⏭️ SKIPPED |
+| JG-1 | Judge agreement with human labels | `calibration.agreement` >= 0.9 | - | - | - | ⏭️ SKIPPED |
+| JG-2 | Judge false-pass rate (passes answers humans failed) | `calibration.false_pass_rate` <= 0.05 | - | - | - | ⏭️ SKIPPED |
 | RS-1 🔒 | Fault-injection scenarios (model down, tracker down, order API down, tool crash, ...) | `resilience.pass_rate` >= 1.0 | 1.0 | 0.824 | 18 | ✅ PASS |
 | RS-2 🔒 | Post-deploy smoke test on the target environment | `smoke.pass_rate` >= 1.0 | 1.0 | 0.785 | 14 | ✅ PASS |
-| LD-1 | Load test: error rate at 2x peak | `load.error_rate` <= 0.001 | - | - | - | ❔ MISSING |
-| LD-2 | Load test: platform p95 latency overhead (excl. model) at 2x peak, ms | `load.p95_overhead_ms` <= 500 | - | - | - | ❔ MISSING |
-| LD-3 | Load test: sustained throughput vs 2x peak requirement (ratio) | `load.capacity_ratio` >= 1.0 | - | - | - | ❔ MISSING |
-| CV-1 | Backend line coverage | `coverage.percent` >= 88 | 92.773 | - | - | ✅ PASS |
+| LD-1 | Load test: error rate at 2x peak | `load.error_rate` <= 0.001 | 0.0 | - | - | ✅ PASS |
+| LD-2 | Load test: platform p95 latency overhead (excl. model) at 2x peak, ms | `load.p95_overhead_ms` <= 500 | 362 | - | - | ✅ PASS |
+| LD-3 | Load test: sustained throughput vs 2x peak requirement (ratio) | `load.capacity_ratio` >= 1.0 | 1.246 | - | - | ✅ PASS |
+| CV-1 | Backend line coverage | `coverage.percent` >= 88 | 93.896 | - | - | ✅ PASS |
 
 <details><summary>Notes on gates</summary>
 
-- **SEC-2**: suite 'security_llm' was not run
-- **SEC-3**: suite 'security_llm' was not run
-- **SEC-4**: suite 'behavior' was not run
-- **QA-3**: suite 'behavior' was not run
-- **QA-4**: suite 'behavior' was not run
-- **QA-5**: suite 'behavior' was not run
-- **QA-6**: suite 'behavior' was not run
-- **QA-7**: suite 'behavior' was not run
-- **HO-1**: suite 'behavior' was not run
-- **HO-2**: suite 'behavior' was not run
-- **TK-1**: suite 'behavior' was not run
-- **JG-1**: suite 'calibration' was not run
-- **JG-2**: suite 'calibration' was not run
-- **LD-1**: suite 'load' was not run
-- **LD-2**: suite 'load' was not run
-- **LD-3**: suite 'load' was not run
+- **SEC-2**: needs a real model: run with --llm anthropic
+- **SEC-3**: needs a real model: run with --llm anthropic
+- **SEC-4**: needs a real model: run with --llm anthropic
+- **QA-3**: needs a real model: run with --llm anthropic
+- **QA-4**: needs a real model: run with --llm anthropic
+- **QA-5**: needs a real model: run with --llm anthropic
+- **QA-6**: needs a real model: run with --llm anthropic
+- **QA-7**: needs a real model: run with --llm anthropic
+- **HO-1**: needs a real model: run with --llm anthropic
+- **HO-2**: needs a real model: run with --llm anthropic
+- **TK-1**: needs a real model: run with --llm anthropic
+- **JG-1**: needs a real model: run with --llm anthropic
+- **JG-2**: needs a real model: run with --llm anthropic
 
 </details>
 

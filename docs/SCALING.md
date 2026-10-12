@@ -151,7 +151,7 @@ sequenceDiagram
 |---|---|---|
 | Don't melt the provider quota or our pods | `GuardedLLM`: per-pod concurrency semaphore (`LLM_MAX_CONCURRENCY`, default 64), 20 s queue timeout, 60 s call timeout | ✅ implemented, tested |
 | Overload/timeouts | typed errors (`overload`, `timeout`, `error`) → turn degrades to human hand-off; metric `sp_llm_calls_total{result}` | ✅ |
-| Fleet-wide concurrency | per-pod cap × pods ≥ 205 in-flight at design load: **e.g. 6 pods × 64 = 384** | ✅ config |
+| Fleet-wide concurrency | per-pod cap × pods ≥ 205 in-flight at design load: **4 pods × 64 = 256 (recommended 5 for N+1)**; this, not CPU, sets the pod count (§9) | ✅ config |
 | Tail latency / outages | secondary model on `overload`/`timeout` (`ANTHROPIC_FALLBACK_MODEL`) | ✅ implemented (see §10) |
 | Cost | prompt caching on the per-tenant static prefix (tools + system); history capped to the last 30 messages; short, tool-focused prompts | ✅ caching split; cap ✅ |
 | Cost/latency tiering | route simple FAQ turns to a cheaper/faster tier (Sonnet/Haiku) and keep the strongest model for order/ticket/handoff reasoning — **only after the behavior suite shows no regression on that tier** | roadmap |
@@ -162,7 +162,7 @@ Prompt caching specifics: current models cache prefixes ≥ 512 tokens; the stat
 
 ### 4.2 API tier
 
-* **Sizing:** start with 3 pods (3 AZs), 2 vCPU / 2 GB each, uvicorn with 1 worker per pod (scale horizontally; async handles concurrency). The measured single-process capacity (§9) × pods must exceed 32.5 turns/s *with* one pod failed.
+* **Sizing:** start with 3 pods (3 AZs), 2 vCPU / 2 GB each, uvicorn with 1 worker per pod (scale horizontally; async handles concurrency). Two limits apply: measured throughput (≈40 turns/s per process on SQLite, §9 — re-measure with Postgres) and **model-concurrency slots** (pods × `LLM_MAX_CONCURRENCY` ≥ ≈205 in-flight calls); the larger requirement wins, and it must hold *with one pod failed* (N+1).
 * **Autoscaling signals (HPA/KEDA):** CPU > 60 %, **in-flight turns per pod** (`sp_llm_inflight` + waiting) and `sp_llm_waiting` > 0 for 1 minute. Scale-out before scale-in: min 3, max set by DB connection budget (§4.3), stabilization window 5 min on scale-down.
 * **Graceful shutdown:** `terminationGracePeriodSeconds` ≥ 90 s so in-flight turns (≤ 60 s) finish; readiness flips to failing first so the LB stops sending traffic. WebSockets reconnect with jittered exponential backoff (widget does 0.5 s → 15 s) and refetch missed state on reconnect, so deploys cause a brief, self-healing reconnect wave, not message loss.
 * **Reconnect storms:** after a pod/zone loss ~⅓ of ~855 sockets reconnect within seconds. Cheap (a JWT check + one DB read), but keep `maxSurge` ≥ 1 and use connection draining at the LB.
@@ -189,7 +189,7 @@ Prompt caching specifics: current models cache prefixes ≥ 512 tokens; the stat
 ### 4.5 Ticketing (Jira)
 
 * Tickets are created inline when the tracker is healthy (so the customer sees the key immediately) and **through the outbox when it isn't** (§3.3). `jira` is a synchronous library → run in worker threads (`asyncio.to_thread`); size the default executor (≥ 16) if you expect bursts.
-* **Rate limits:** Jira Cloud rate-limits per app/user and returns `429 Retry-After`. At 30k tickets/day (0.35/s average, perhaps 3–5/s in a burst) you are normally far below limits, but a bulk-incident burst can exceed them: the outbox absorbs it and drains at a rate the worker controls (`outbox_poll_seconds`, batch size). Add a global token bucket if you run many tenants against one Jira.
+* **Rate limits:** Jira Cloud rate-limits per app/user and returns `429 Retry-After`. At 30k tickets/day (0.35/s average, perhaps 3–5/s in a burst) you are normally far below limits, but a bulk-incident burst can exceed them: the outbox absorbs it and drains at a rate the worker controls (`OUTBOX_POLL_SECONDS`; 20 rows per poll). Add a global token bucket if you run many tenants against one Jira.
 * **Idempotency:** each issue carries a label `sp-<key>`; retries first search by that label so a timed-out-but-successful create is never duplicated. Failures are classified **retryable** (timeouts, 408/425/429/5xx) vs **permanent** (400/401/403 — misconfiguration): permanent errors are not queued forever.
 * **Dead letters:** after 8 attempts (~hours) the row is `dead`, the customer is told, and the conversation is handed to a human. Alert on `sp_ticket_outbox_pending` depth/age.
 * **Another tracker:** implement the one-method `TicketProvider` protocol; the outbox, idempotency and metrics come for free.
@@ -313,7 +313,42 @@ Measure rather than trust: after the first real evaluation, put the *measured* t
 
 > **Scope of these numbers.** One uvicorn process, SQLite (`aiosqlite`) on local disk, no Redis, a 4-vCPU / 16 GB sandbox shared with the load generator, simulated model (lognormal, median 2.5 s). They measure *our application code under a realistic concurrency shape*. They are **not** a Postgres/Redis/multi-pod result — repeat on staging (commands in EVALUATION.md §8) before citing capacity to the business.
 
-_RESULTS_PLACEHOLDER_
+**Ramp (open-loop, steady-state window per step)** — measured 2026-10-12T06:48:32+00:00  
+_uvicorn x1 process, SQLite (aiosqlite) on local disk, 4 vCPU sandbox shared with the load generator, no Redis, simulated model median 2.5s, LLM_MAX_CONCURRENCY=1000_
+
+| Offered conv/s | Steady turns/s | Errors | p50 / p95 / p99 total (ms) | p50 / p95 / p99 platform overhead (ms) | Verdict |
+|---|---|---|---|---|---|
+| 4.0 | 27.5 | 0 (0.00 %) | 4143 / 7977 / 9998 | 36 / 127 / 304 | ✅ within gates |
+| 6.0 | 40.5 | 0 (0.00 %) | 4463 / 8001 / 10131 | 70 / 362 / 994 | ✅ within gates |
+| 9.0 | 51.5 | 0 (0.00 %) | 4451 / 8319 / 10241 | 237 / 1211 / 2089 | ❌ saturated |
+
+* Highest step within gates: **40.5 turns/s per process**; the design point needs **32.5 turns/s** → capacity ratio **1.246** for one process.
+* `replicas needed at design load ≈ ceil(32.5 / 40.5) = 1` (before N+1 headroom; assumes linear scaling until the shared database saturates — to be confirmed on staging).
+
+**WebSocket soak**
+
+| Open sockets | Delivered | p50 / p95 / p99 / max reply→socket (ms) |
+|---|---|---|
+| 1000 / 1000 | 1000 (100.0 %) | 693 / 1383 / 2154 / 2782 |
+
+
+**What the load testing found (in order) — and what it means**
+
+1. **A real application bug, now fixed.** The first ramp collapsed at ≈1.6 conv/s (p95 platform overhead 33 ms → 2.4 s). Cause: each in-flight turn kept a **database connection checked out for the whole model call** (an auto-begun read transaction was never closed), so concurrency was capped at the default pool size (15). It would have been fatal at the design point (≈205 turns in flight). Fixed by ending the transaction before every wait on the model, the ticket tracker and the order API; guarded by three regression tests that assert *zero checked-out connections* during those waits. No unit test had caught it — only realistic concurrency did.
+2. **A flaw in my own measurement, also fixed.** My first fix-verification used 15 s steps while a conversation lasts ≈40 s, so the server never reached steady state and "turns/s" was divided by a wall-clock that included the drain — it overstated capacity. The tool now uses a 75 s arrival window, excludes a 45 s warm-up, and measures only the steady-state window. (Mentioned because the first "good" numbers were wrong and should not be quoted.)
+3. **The per-pod model-concurrency cap is a throughput ceiling, by design.** With the default `LLM_MAX_CONCURRENCY=64` and a 2.5 s model, a pod can run at most 64 / 2.5 / 1.8 ≈ **14 turns/s** (measured: 14.1–14.4), no matter how idle its CPU is; beyond that, turns queue (p95 total latency 29 s) and, after the 20 s queue timeout, degrade to a human hand-off. That is the guard working — but it means **pod count is set by model slots, not CPU**: `pods ≥ ceil(in-flight calls ÷ cap)` = ceil(205 ÷ 64) = **4**, recommended **5** with N+1. Raise the cap (it only costs memory) once the provider quota supports it. Queue wait is now reported separately from model latency (`timing.queue_ms`, so it counts as platform overhead and shows up as saturation).
+4. **Platform ceiling on this hardware.** With the cap lifted (1,000), one process sustained **40.5 turns/s within all gates** (error 0 %, p95 overhead 362 ms) — **1.25× the 32.5 turns/s design point** — and saturated between 40 and 51 turns/s (p95 overhead 1.2 s, still 0 errors). *The saturating resource was not profiled* (CPU of the single event loop and SQLite commit serialisation are the suspects; the load generator shares the 4 vCPUs). Treat ≈40 turns/s/process as a conservative planning input for the capacity model, and re-measure on staging.
+5. **WebSockets:** 1,000 simultaneous sockets (≈1.2× the design point's 855) all connected and **100 % of agent replies were delivered, p95 1.4 s, max 2.8 s** — measured as a worst-case burst (1,000 replies fired at once through a single SQLite-backed process; the real rate is ≈100 events/s, so steady-state delivery will be far faster). Cross-pod delivery via Redis was verified functionally against a real `redis-server` but **not** load-tested here.
+
+**Gate status (EVALUATION §7):** LD-1 error rate 0 % ✅ · LD-2 p95 overhead 362 ms ≤ 500 ✅ · LD-3 capacity ratio 1.25 ≥ 1.0 ✅ — **for one process on SQLite with a simulated model**. These gates are *not* satisfied for the real deployment until the same run passes on staging (3+ pods, Postgres + PgBouncer, Redis, real network), because that is where connection limits, commit latency and cross-pod fan-out show up. Reproduce:
+
+```bash
+# server (staging-like):  LLM_PROVIDER=simulated SIM_LLM_MEDIAN_SECONDS=2.5 LLM_MAX_CONCURRENCY=1000 MESSAGES_PER_MINUTE=100000 ...
+python -m loadtest.run ramp --user-secret <secret> --start-rate 4 --step-factor 1.5 --note "<what you ran>"
+python -m loadtest.run ws --sockets 1000
+python -m loadtest.render        # markdown tables above
+```
+
 
 ## 10. Implemented vs roadmap
 

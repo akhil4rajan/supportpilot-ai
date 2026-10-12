@@ -349,3 +349,69 @@ async def test_no_db_connection_is_held_while_waiting_for_the_order_api(tmp_path
         s = (await c.post("/v1/widget/sessions", json={"public_key": "pk_acme_demo", "user_token": user_token("alice")})).json()
         await c.post("/v1/widget/messages", json={"content": "status"}, headers=auth(s["token"]))
         assert seen == [0], seen
+
+
+# ------------------------------------------------------------------ fallback model + queue accounting
+class Flaky:
+    def __init__(self, kind=None, text="ok"):
+        self.kind, self.text, self.seen = kind, text, []
+
+    async def complete(self, **kw):
+        self.seen.append(kw)
+        if self.kind:
+            raise LLMError("x", self.kind)
+        return LLMResponse(self.text, [], [], "end_turn")
+
+
+@pytest.mark.parametrize("kind", ["overload", "timeout", "error"])
+async def test_fallback_model_takes_over_on_retryable_failures(kind):
+    from app.llm.fallback import FallbackLLM
+    primary, secondary = Flaky(kind), Flaky(text="from fallback")
+    r = await FallbackLLM(primary, secondary, "big", "small").complete(system="s", messages=[], tools=[])
+    assert r.text == "from fallback" and len(primary.seen) == 1 and len(secondary.seen) == 1
+
+
+async def test_fallback_not_used_for_unrelated_errors_and_failure_propagates():
+    from app.llm.fallback import FallbackLLM
+    with pytest.raises(LLMError):
+        await FallbackLLM(Flaky("overload"), Flaky("overload"), "a", "b").complete(system="s", messages=[], tools=[])
+    ok = Flaky(text="primary")
+    assert (await FallbackLLM(ok, Flaky("error"), "a", "b").complete(system="s", messages=[], tools=[])).text == "primary"
+
+
+async def test_fallback_strips_model_bound_thinking_blocks():
+    from types import SimpleNamespace
+    from app.llm.fallback import FallbackLLM, strip_thinking
+    msgs = [{"role": "user", "content": "q"},
+            {"role": "assistant", "content": [SimpleNamespace(type="thinking", thinking="", signature="s"), {"type": "thinking"}, {"type": "redacted_thinking"},
+                                              {"type": "tool_use", "id": "t", "name": "n", "input": {}}]}]
+    assert strip_thinking(msgs)[1]["content"] == [{"type": "tool_use", "id": "t", "name": "n", "input": {}}]
+    secondary = Flaky()
+    await FallbackLLM(Flaky("overload"), secondary, "a", "b").complete(system="s", messages=msgs, tools=[])
+    assert all(b.get("type") == "tool_use" for b in secondary.seen[0]["messages"][1]["content"])
+
+
+def test_build_llm_wires_fallback_only_when_configured(tmp_path):
+    from app.config import Settings
+    from app.llm.fallback import FallbackLLM
+    from app.llm.guard import GuardedLLM
+    from app.main import build_llm
+    base = dict(database_url="sqlite+aiosqlite:///x.db", server_secret="s" * 40, tenants_dir=tmp_path)
+    assert isinstance(build_llm(Settings(**base)), GuardedLLM)
+    assert isinstance(build_llm(Settings(**base, anthropic_fallback_model="claude-sonnet-5-5")), FallbackLLM)
+    assert isinstance(build_llm(Settings(**base, anthropic_fallback_model="claude-opus-5-5")), GuardedLLM)  # same model: no point
+
+
+async def test_queue_wait_is_reported_separately_from_model_time():
+    g = GuardedLLM(SlowLLM(0.15), "m", max_concurrency=1, queue_timeout=5)
+    a, b = await asyncio.gather(g.complete(system="s", messages=[], tools=[]), g.complete(system="s", messages=[], tools=[]))
+    first, second = sorted([a, b], key=lambda r: r.queue_ms)
+    assert first.queue_ms < 50 and second.queue_ms >= 100  # the second call waited for the slot
+
+
+async def test_turn_timing_meta_separates_model_and_queue_time(tmp_path):
+    async with async_app(tmp_path, GuardedLLM(SlowLLM(0.05), "m", max_concurrency=8)) as c:
+        s = (await c.post("/v1/widget/sessions", json={"public_key": "pk_acme_demo"})).json()
+        r = await c.post("/v1/widget/messages", json={"content": "hello there"}, headers=auth(s["token"]))
+        t = r.json()["messages"][-1]["meta"]["timing"]
+        assert t["llm_calls"] == 1 and 30 <= t["llm_ms"] < 400 and t["queue_ms"] < 50

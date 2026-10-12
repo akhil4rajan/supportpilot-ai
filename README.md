@@ -119,14 +119,14 @@ Three commands, increasing in cost (details and rationale in [`docs/EVALUATION.m
 
 ```bash
 cd backend
-python -m pytest --cov                 # unit + integration (__TESTS__ tests, real Redis, coverage gate 88 %)
+python -m pytest --cov                 # unit + integration (137 tests, real Redis, coverage gate 88 %)
 python -m evals.run                    # fast release gates, no API key: retrieval, security, resilience, smoke   → exit 1 on FAIL
 python -m evals.run --llm anthropic --trials 3 --require-ready   # full: real model + LLM judge + manual checklist  (~$8)
 ```
 
 `evals.run` evaluates ~20 gates from [`backend/evals/thresholds.yaml`](backend/evals/thresholds.yaml) (zero-tolerance security and resilience gates; statistical quality, handoff, ticket and judge-trust gates; load and coverage evidence) and writes `evals/reports/report.md` with a **READY / NOT READY** verdict. A gate that could not run counts as *not passed*; output of the keyword demo model is never valid evidence. The evaluation suites themselves are tested by deliberately breaking the product (IDOR bug, forged-token acceptance, missing tenant scoping, hallucinating/leaky model, rubber-stamp judge) and requiring them to fail.
 
-**Current verdict: NOT READY** — correctly. Everything that can run without credentials passes (platform security 69/69, resilience 18/18, smoke 14/14, held-out retrieval, coverage 92.7 %), but the model-in-the-loop suites need `ANTHROPIC_API_KEY`, load must be re-measured on staging (Postgres + Redis), and the 12 manual items (pen-test, DPIA, shadow mode, DR drill, staffing…) are open. See [EVALUATION §12](docs/EVALUATION.md#12-current-status-baseline-in-this-repository).
+**Current verdict: NOT READY** — correctly. Everything that can run without credentials passes (platform security 69/69, resilience 18/18, smoke 14/14, held-out retrieval, coverage 93.9 %), but the model-in-the-loop suites need `ANTHROPIC_API_KEY`, load must be re-measured on staging (Postgres + Redis), and the 12 manual items (pen-test, DPIA, shadow mode, DR drill, staffing…) are open. See [EVALUATION §12](docs/EVALUATION.md#12-current-status-baseline-in-this-repository).
 
 * `cd frontend && npm run typecheck && npm test && npm run build`.
 * A real-browser run (Playwright/Chromium) exercised: KB answer + citation, Alice vs Bob vs guest order lookups, ticket card, handoff, live agent↔customer messaging via the console, resolve, and the one-tag embed on a hostile-CSS page.
