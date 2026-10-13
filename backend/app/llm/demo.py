@@ -1,7 +1,7 @@
 """Keyword-driven stand-in for the model: lets you run and click through the whole product with no API key.
 
 It is deliberately dumb. It exists to exercise the real tool pipeline (auth, KB, tickets, handoff);
-it is NOT a quality reference. Use LLM_PROVIDER=anthropic for the real thing.
+it is NOT a quality reference. Use a real provider (see README, "Choosing an AI provider") for the real thing.
 """
 from __future__ import annotations
 

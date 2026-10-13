@@ -18,11 +18,11 @@ from app.agent.orchestrator import SupportAgent
 from app.api import admin, agent_console, dev, widget
 from app.config import Settings, get_settings
 from app.db import Database
-from app.llm.anthropic_client import AnthropicLLM
 from app.llm.base import LLMClient
 from app.llm.demo import DemoLLM
 from app.llm.fallback import FallbackLLM
 from app.llm.guard import GuardedLLM
+from app.llm.providers import build_client
 from app.llm.simulated import SimulatedLLM
 from app.services.outbox import OutboxWorker
 from app.services.ratelimit import RateLimiter, RedisRateLimiter
@@ -34,26 +34,25 @@ log = logging.getLogger("supportpilot")
 
 
 def build_llm(s: Settings) -> LLMClient:
-    if s.llm_provider == "demo":
-        log.warning("LLM_PROVIDER=demo: using the keyword-based stand-in model (no API key needed)")
-        inner: LLMClient = DemoLLM()
-    elif s.llm_provider == "simulated":
-        log.warning("LLM_PROVIDER=simulated: latency-realistic fake model for load tests")
-        inner = SimulatedLLM(float(os.environ.get("SIM_LLM_MEDIAN_SECONDS", "2.5")), tool_rate=float(os.environ.get("SIM_LLM_TOOL_RATE", "0.6")))
-    else:
-        inner = AnthropicLLM(s.anthropic_model, s.llm_max_tokens, s.anthropic_effort)
-
     def guard(client: LLMClient, name: str) -> GuardedLLM:
         return GuardedLLM(client, name, s.llm_max_concurrency, s.llm_queue_timeout_seconds, s.llm_call_timeout_seconds)
 
-    if s.llm_provider == "anthropic":
-        primary = guard(inner, s.anthropic_model)
-        if s.anthropic_fallback_model and s.anthropic_fallback_model != s.anthropic_model:
-            # Each model gets its own concurrency budget: a saturated primary must not starve the fallback.
-            secondary = guard(AnthropicLLM(s.anthropic_fallback_model, s.llm_max_tokens, s.anthropic_effort), s.anthropic_fallback_model)
-            return FallbackLLM(primary, secondary, s.anthropic_model, s.anthropic_fallback_model)
-        return primary
-    return guard(inner, s.llm_provider)
+    if s.llm_provider == "demo":
+        log.warning("LLM_PROVIDER=demo: using the keyword-based stand-in model (no API key needed)")
+        return guard(DemoLLM(), "demo")
+    if s.llm_provider == "simulated":
+        log.warning("LLM_PROVIDER=simulated: latency-realistic fake model for load tests")
+        return guard(SimulatedLLM(float(os.environ.get("SIM_LLM_MEDIAN_SECONDS", "2.5")), tool_rate=float(os.environ.get("SIM_LLM_TOOL_RATE", "0.6"))), "simulated")
+
+    model = s.llm_model or (s.anthropic_model if s.llm_provider == "anthropic" else "")
+    primary = guard(build_client(s.llm_provider, model, s), model)
+    fb_provider = s.llm_fallback_provider or s.llm_provider
+    fb_model = s.llm_fallback_model or (s.anthropic_fallback_model if fb_provider == "anthropic" else "")
+    if fb_model and (fb_provider, fb_model) != (s.llm_provider, model):
+        # Each model gets its own concurrency budget: a saturated primary must not starve the fallback.
+        secondary = guard(build_client(fb_provider, fb_model, s), fb_model)
+        return FallbackLLM(primary, secondary, model, fb_model)
+    return primary
 
 
 class JsonFormatter(logging.Formatter):

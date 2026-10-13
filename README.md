@@ -4,7 +4,7 @@ A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website g
 
 | Capability | How it works |
 |---|---|
-| **Answer support questions** from *each customer's own* documents | Per-tenant knowledge base (Markdown/text) → chunked, BM25-indexed → Claude answers only from retrieved passages, with source citations. A confidence gate stops it guessing. |
+| **Answer support questions** from *each customer's own* documents | Per-tenant knowledge base (Markdown/text) → chunked, BM25-indexed → the model answers only from retrieved passages, with source citations. A confidence gate stops it guessing. |
 | **Check order status — only the user's own orders** | Identity comes from a token signed by the *customer's backend*, never from the chat. Tools can't take a user id; ownership is enforced in 3 layers. |
 | **Open a support ticket** | Jira via the [`jira`](https://pypi.org/project/jira/) Python package (pluggable provider). Asks for confirmation first, attaches the transcript, de-duplicates. |
 | **Hand off to a human** | Model-initiated, button-initiated, deterministic phrase match ("get me a human"), automatic after repeated failures, or on model outage. Live agent console over WebSocket. |
@@ -13,7 +13,7 @@ A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website g
  Customer's site                     SupportPilot (FastAPI)                         Integrations
 ┌────────────────┐  user token  ┌──────────────────────────────────────┐
 │ Customer's own │─ (HS256) ───▶│ /v1/widget/*  session, chat, WS      │      ┌─────────────┐
-│ backend        │              │    │                                 │─────▶│ Claude API  │
+│ backend        │              │    │                                 │─────▶│ LLM provider│
 └────────────────┘              │    ▼                                 │      └─────────────┘
 ┌────────────────┐  widget.js   │  Orchestrator (tool-use loop)        │      ┌─────────────┐
 │ Widget (React, │◀────────────▶│   ├ search_knowledge_base → BM25 KB  │─────▶│ Order API   │ (demo | http)
@@ -37,10 +37,33 @@ cd ../backend && LLM_PROVIDER=demo STATIC_DIR=../frontend/dist .venv/bin/uvicorn
 
 * Demo storefront: <http://localhost:8000/> — switch between Guest / Alice / Bob and chat.
 * Agent console: <http://localhost:8000/console/> — company `acme`, key `sam-demo-key`.
-* `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`.
+* `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers pick a provider — see [Choosing an AI provider](#choosing-an-ai-provider).
 
 Dev mode with hot reload: `uvicorn app.main:app_factory --factory --reload` + `cd frontend && npm run dev` (port 5173, proxies `/v1` to 8000).
 Docker: `docker compose up --build` (Postgres included).
+
+## Choosing an AI provider
+
+SupportPilot is model-agnostic. Set `LLM_PROVIDER` (and `LLM_MODEL`) in `.env`; no code changes.
+
+| `LLM_PROVIDER` | Models | Key variable |
+|---|---|---|
+| `anthropic` | Anthropic (native SDK, prompt caching) | `ANTHROPIC_API_KEY` |
+| `openai` | OpenAI | `OPENAI_API_KEY` |
+| `gemini` | Google Gemini (OpenAI-compatible endpoint) | `GEMINI_API_KEY` |
+| `meta` | Meta Llama API | `LLAMA_API_KEY` |
+| `groq`, `together`, `fireworks`, `openrouter` | Llama, Mistral and many others, hosted | `GROQ_API_KEY`, `TOGETHER_API_KEY`, … |
+| `mistral`, `deepseek` | Mistral, DeepSeek | `MISTRAL_API_KEY`, `DEEPSEEK_API_KEY` |
+| `ollama`, `vllm` | Self-hosted open models (Llama etc.), no key | — |
+| `openai_compatible` | Any other endpoint (Azure OpenAI, a gateway…) | `LLM_BASE_URL` + `LLM_API_KEY` |
+
+```bash
+LLM_PROVIDER=openai LLM_MODEL=<model-id> OPENAI_API_KEY=...        # example
+LLM_PROVIDER=ollama LLM_MODEL=llama3.1                              # fully self-hosted
+LLM_PROVIDER=openai LLM_MODEL=<id> LLM_FALLBACK_PROVIDER=groq LLM_FALLBACK_MODEL=<id>   # cross-vendor failover
+```
+
+Non-Anthropic providers use the OpenAI-compatible chat-completions API with tool calling, so the chosen model must support tools. The orchestrator uses one internal message format and the client translates, so tool use, handoff and the order-access guarantees are identical across providers (see `backend/app/llm/`).
 
 ## Onboarding a new customer (no code changes)
 
@@ -102,7 +125,7 @@ backend/app/
   agent/        orchestrator (tool loop, handoff logic), tools (+authz), prompts
   api/          widget.py, agent_console.py, admin.py, dev.py, deps.py, ws.py
   integrations/ orders/{demo,http}, tickets/{jira_provider,memory}, notify.py
-  llm/          Claude client (SDK), guard (concurrency/timeouts), fallback, demo + simulated models
+  llm/          provider clients (Anthropic SDK, OpenAI-compatible HTTP), provider registry, guard (concurrency/timeouts), fallback, demo + simulated models
   rag/          chunker, BM25 index           services/  conversations, handoff, realtime hub (Redis), outbox, rate limit
   tenancy/      tenant schema + registry      metrics.py  Prometheus metrics
 backend/tenants/acme/   sample customer (config, knowledge, demo orders)
@@ -131,7 +154,7 @@ python -m evals.run --llm anthropic --trials 3 --require-ready   # full: real mo
 * `cd frontend && npm run typecheck && npm test && npm run build`.
 * A real-browser run (Playwright/Chromium) exercised: KB answer + citation, Alice vs Bob vs guest order lookups, ticket card, handoff, live agent↔customer messaging via the console, resolve, and the one-tag embed on a hostile-CSS page.
 
-**Not verified in the build environment** (no credentials/infrastructure there): calls to the real Claude API (client unit-tested against a stubbed SDK; orchestration against scripted models), a real Jira instance (fake `JIRA` object), the Docker build, **Postgres** (SQLite only; Redis *was* tested against a real `redis-server`).
+**Not verified in the build environment** (no credentials/infrastructure there): calls to real model APIs (clients unit-tested against stubbed transports; orchestration against scripted models), a real Jira instance (fake `JIRA` object), the Docker build, **Postgres** (SQLite only; Redis *was* tested against a real `redis-server`).
 
 ## Scaling to production load (summary)
 
@@ -143,5 +166,5 @@ Design point: **~30,000 conversations/day → 5 conversations/s, ≈33 bot turns
 * **Add versioned migrations (Alembic) before the first schema change** (`create_all()` is used at start-up today), monthly partitions + a retention job for `messages`/`audit_log`, and a read replica when lists get heavy.
 * Tenant config/knowledge uploads write to the receiving pod's disk: in multi-pod setups use shared storage or deploy config from git. Retrieval is BM25 (zero infrastructure, strong for FAQ/policy docs) — move to hybrid/embeddings behind `KnowledgeBase.search()` if the retrieval gates degrade. Only `.md/.txt` ingestion today.
 * Replies are not streamed token-by-token yet (typing indicator). Order-ownership also needs enforcing in your own order API: SupportPilot's checks hold on its side regardless.
-* Model: defaults to `claude-opus-5-5`; `claude-sonnet-5-5` / `claude-haiku-5-5` are cheaper/faster — pick the cheapest that passes every gate in the behavior suite. Optional `ANTHROPIC_FALLBACK_MODEL` for provider overload. `ANTHROPIC_EFFORT` tunes depth/cost.
+* Model: choose the cheapest one that passes every gate in the behavior suite. Optional `LLM_FALLBACK_PROVIDER`/`LLM_FALLBACK_MODEL` for provider overload (can be a different vendor). The model-in-the-loop eval suites currently run against Anthropic only; re-run the gates on whichever provider/model you ship.
 * Add SSO for the agent console (per-agent access keys today), per-tenant quotas, and widget feedback (👍/👎) for online evaluation.
