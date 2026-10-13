@@ -23,10 +23,18 @@ class Settings(BaseSettings):
     # Protects /v1/admin/* (tenant reload, knowledge upload). Empty = admin API disabled.
     admin_api_key: str = ""
 
-    llm_provider: str = "anthropic"  # anthropic | demo (keyword-based, no API key; for trying the UI)
-    anthropic_model: str = "claude-opus-5-5"  # cheaper options: claude-sonnet-5-5, claude-haiku-5-5
+    # anthropic | openai | gemini | meta | groq | together | fireworks | mistral | deepseek | openrouter | ollama | vllm |
+    # openai_compatible | demo (keyword-based, no API key; for trying the UI). See app/llm/providers.py.
+    llm_provider: str = "anthropic"
+    llm_model: str = ""  # provider's model id; required except for anthropic (falls back to ANTHROPIC_MODEL)
+    llm_base_url: str = ""  # override a preset's endpoint (Azure, a proxy, a self-hosted server...)
+    llm_api_key: str = ""  # generic key; otherwise the provider's own env var (OPENAI_API_KEY, GEMINI_API_KEY, ...)
+    # Optional secondary model used when the primary is overloaded/timing out. May be a DIFFERENT provider.
+    llm_fallback_provider: str = ""  # defaults to llm_provider
+    llm_fallback_model: str = ""
+    anthropic_model: str = "claude-opus-5-5"  # default model when llm_provider=anthropic
     anthropic_effort: str = "medium"  # low | medium | high ...
-    anthropic_fallback_model: str = ""  # used when the primary is overloaded/timing out, e.g. claude-sonnet-5-5
+    anthropic_fallback_model: str = ""  # legacy alias of llm_fallback_model for the anthropic provider
     llm_max_tokens: int = Field(default=2048, ge=256)
     llm_max_tool_steps: int = Field(default=6, ge=1)
 
