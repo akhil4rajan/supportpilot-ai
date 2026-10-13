@@ -1,5 +1,6 @@
 # Full evaluation with the REAL model + LLM judge (model-in-the-loop security, behavior, judge calibration).
-# Costs roughly $5-10 per run (see docs/EVALUATION.md section 8). Needs the repository secret ANTHROPIC_API_KEY.
+# Costs roughly $5-10 per run (see docs/EVALUATION.md section 8). Needs the repository secret ANTHROPIC_API_KEY;
+# without it the job skips the paid steps (and passes) instead of failing.
 name: evals-full
 on:
   schedule: [{ cron: "17 3 * * *" }]   # nightly
@@ -16,14 +17,23 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       ANTHROPIC_MODEL: ${{ inputs.model || 'claude-opus-5-5' }}
     steps:
+      - name: Skip when no API key is configured
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "::notice::ANTHROPIC_API_KEY secret is not set; skipping the paid full evaluation."
       - uses: actions/checkout@v4
+        if: env.ANTHROPIC_API_KEY != ''
       - uses: actions/setup-python@v5
+        if: env.ANTHROPIC_API_KEY != ''
         with: { python-version: "3.13" }
       - run: sudo apt-get update && sudo apt-get install -y redis-server
+        if: env.ANTHROPIC_API_KEY != ''
       - run: pip install -e ".[dev]"
+        if: env.ANTHROPIC_API_KEY != ''
       - run: python -m pytest -q --cov --cov-report=json:coverage.json
+        if: env.ANTHROPIC_API_KEY != ''
       - name: Full evaluation (exit 1 if any automated gate FAILS)
+        if: env.ANTHROPIC_API_KEY != ''
         run: python -m evals.run --llm anthropic --trials ${{ inputs.trials || '3' }}
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && env.ANTHROPIC_API_KEY != ''
         with: { name: eval-report-full, path: "backend/evals/reports/report.*" }
