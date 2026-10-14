@@ -19,6 +19,7 @@ jobs:
     steps:
       - name: Skip when no API key is configured
         if: env.ANTHROPIC_API_KEY == ''
+        working-directory: .   # runs before checkout, so backend/ does not exist yet
         run: echo "::notice::ANTHROPIC_API_KEY secret is not set; skipping the paid full evaluation."
       - uses: actions/checkout@v4
         if: env.ANTHROPIC_API_KEY != ''
