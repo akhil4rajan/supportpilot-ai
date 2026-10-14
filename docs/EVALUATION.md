@@ -28,15 +28,15 @@ Contents: [1 Principles](#1-principles) · [2 What is tested, by layer](#2-what-
 | **L1 Security (platform)** | Can an attacker — or a misbehaving model — cross an authorization boundary? | `evals.suites.security` — 69 generated cases, **zero tolerance** | No | every PR | ~4 s |
 | **L2 Retrieval** | Does the right passage reach the model? Does the system know when it has nothing? | `retrieval`, `retrieval_holdout` — 56 + 34 labelled questions | No | every PR | <1 s |
 | **L3 Resilience** | When dependencies fail, do customers still get served and nothing is lost? | `evals.suites.resilience` — 18 fault-injection scenarios | No | every PR | ~2 s |
-| **L4 Behavior** | Does the *model with our prompt and tools* answer correctly, stay grounded, refuse to invent, confirm before filing tickets, escalate the right conversations? | `behavior` — 47 scripted scenarios × k=3 trials, deterministic checks + LLM judge | **Yes** | nightly + pre-release | ~$8, ~10 min |
-| **L5 Security (model)** | Can a real model be talked into leaking data / its prompt, incl. via poisoned KB content? | `security_llm` — 15 attacks + KB poisoning × k=3, canary-based | **Yes** | nightly + pre-release | ~$1 |
+| **L4 Behavior** | Does the *model with our prompt and tools* answer correctly, stay grounded, refuse to invent, confirm before filing tickets, escalate the right conversations? | `behavior` — 47 scripted scenarios × k=3 trials, deterministic checks + LLM judge | **Yes** | on change + pre-release | ~$8, ~10 min |
+| **L5 Security (model)** | Can a real model be talked into leaking data / its prompt, incl. via poisoned KB content? | `security_llm` — 15 attacks + KB poisoning × k=3, canary-based | **Yes** | on change + pre-release | ~$1 |
 | **L6 Judge calibration** | Can we trust the LLM judge? | `calibration` — 24 human-labelled examples | **Yes** | when judge/rubric changes + pre-release | ~$0.20 |
 | **L7 Load & capacity** | Does it sustain 2× the busiest minute of 30k/day? | `loadtest.run ramp` + `ws` against a staging stack with Postgres + Redis | No (simulated model) | pre-release, quarterly | ~15 min |
 | **L8 Post-deploy smoke** | Is *this deployment* alive and correct? | `evals.suites.smoke` against the environment URL, with a dedicated smoke tenant/customer | No | every deploy | ~10 s |
 | **L9 Online / shadow / canary** | Does it work on *real* traffic? | §9 | Yes | before and after launch | weeks |
 | **Manual** | Things no script can verify (pen-test, DPIA, DR drill, staffing…) | [`readiness_manual.yaml`](../backend/evals/readiness_manual.yaml), 12 items | — | pre-launch | — |
 
-Why this shape: L0–L3, L8 are cheap and deterministic, so they run on every change and fail the build. L4–L6 cost real money and are noisy, so they run nightly and before release, with repetition and statistics. L7 is expensive in time, so it runs before releases and after infrastructure changes. L9 is the only layer that sees real customers and is therefore the final arbiter.
+Why this shape: L0–L3, L8 are cheap and deterministic, so they run on every change and fail the build. L4–L6 cost real money and are noisy, so they run manually on prompt/tool/model/KB changes and before release (no scheduled run; add one once there is live traffic to drift against), with repetition and statistics. L7 is expensive in time, so it runs before releases and after infrastructure changes. L9 is the only layer that sees real customers and is therefore the final arbiter.
 
 ## 3. Suites in detail
 
@@ -256,7 +256,7 @@ Route a slice of *new* conversations to the bot with automatic rollback if any *
 ### 9.3 Steady state
 * **Daily QA sample:** 1–2 % of conversations (all escalations, all thumbs-down, all `none`-band searches, a random slice) reviewed by humans using the same rubrics; results trend on a dashboard. Judge scores on 100 % of traffic are *triage only* (cheap, not authoritative).
 * **Business outcomes:** containment (resolved without human), escalation precision (did the human actually need to act?), time-to-resolution, ticket quality (do agents have to re-ask?), CSAT vs. human-only baseline.
-* **Drift:** the KB changes, models change, customers change. Re-run the full suite on every prompt/model/KB/tool change and nightly; alert on any gate regression.
+* **Drift:** the KB changes, models change, customers change. Re-run the full suite on every prompt/model/KB/tool change (and nightly once live); alert on any gate regression.
 * **Feedback loop:** every escalation reason, every thumbs-down and every incident → a new row in `behavior.yaml`/`retrieval.jsonl` within the sprint. The datasets are the product's institutional memory.
 
 ## 10. Release process
@@ -264,7 +264,7 @@ Route a slice of *new* conversations to the bot with automatic rollback if any *
 | Event | What runs | Blocks merge/deploy? |
 |---|---|---|
 | Pull request | pytest + coverage, `python -m evals.run` (fast suites) | yes (CI) |
-| Nightly | full `--llm anthropic` run on the shipping model, both judge & model | alerts; blocks next release |
+| Nightly (optional, once live) | full `--llm anthropic` run on the shipping model, both judge & model; not scheduled by default | alerts; blocks next release |
 | Change to prompt, tools, model, KB or retrieval | full run (behavior + security_llm + calibration) | **yes** — compare to last green run, paired per-scenario |
 | Pre-release candidate | full run + load ramp + WS soak on staging + manual checklist review | yes (`--require-ready`) |
 | Every deploy | smoke against that environment | yes (auto-rollback) |
