@@ -1,9 +1,9 @@
 # Full evaluation with the REAL model + LLM judge (model-in-the-loop security, behavior, judge calibration).
+# Manual only (no schedule): run it on prompt/tool/model/KB/retrieval changes and before a release.
 # Costs roughly $5-10 per run (see docs/EVALUATION.md section 8). Needs the repository secret ANTHROPIC_API_KEY;
 # without it the job skips the paid steps (and passes) instead of failing.
 name: evals-full
 on:
-  schedule: [{ cron: "17 3 * * *" }]   # nightly
   workflow_dispatch:
     inputs:
       model: { description: "Model under test (the one you intend to ship)", default: "claude-opus-5-5" }
@@ -19,6 +19,7 @@ jobs:
     steps:
       - name: Skip when no API key is configured
         if: env.ANTHROPIC_API_KEY == ''
+        working-directory: .   # runs before checkout, so backend/ does not exist yet
         run: echo "::notice::ANTHROPIC_API_KEY secret is not set; skipping the paid full evaluation."
       - uses: actions/checkout@v4
         if: env.ANTHROPIC_API_KEY != ''
