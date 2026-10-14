@@ -1,6 +1,27 @@
 # SupportPilot AI
 
-A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website gives visitors a chat assistant that can:
+[![CI](https://github.com/akhil4rajan/supportpilot-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/akhil4rajan/supportpilot-ai/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website gives visitors a chat assistant that answers from the company's own docs, looks up *only the signed-in user's* orders, files tickets and hands off to a human.
+
+## Try it in two minutes (no API key needed)
+
+```bash
+cp .env.example .env                       # demo secrets; set LLM_PROVIDER=demo to run without a key
+cd backend && python -m venv .venv && .venv/bin/pip install -e ".[dev]"
+cd ../frontend && npm install && npm run build
+cd ../backend && LLM_PROVIDER=demo STATIC_DIR=../frontend/dist .venv/bin/uvicorn app.main:app_factory --factory --port 8000
+```
+
+* Demo storefront: <http://localhost:8000/> — switch between Guest / Alice / Bob and chat.
+* Agent console: <http://localhost:8000/console/> — company `acme`, key `sam-demo-key`.
+* `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers pick a provider — see [Choosing an AI provider](#choosing-an-ai-provider).
+
+Dev mode with hot reload: `uvicorn app.main:app_factory --factory --reload` + `cd frontend && npm run dev` (port 5173, proxies `/v1` to 8000).
+Docker: `docker compose up --build` (Postgres included).
+
+## What it does
 
 | Capability | How it works |
 |---|---|
@@ -25,22 +46,6 @@ A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website g
 └────────────────┘              │ SQL (SQLite | Postgres)              │─────▶│ Slack hook  │ (optional)
                                 └──────────────────────────────────────┘      └─────────────┘
 ```
-
-## Quick start (no API key needed)
-
-```bash
-cp .env.example .env                       # demo secrets; set LLM_PROVIDER=demo to run without a key
-cd backend && python -m venv .venv && .venv/bin/pip install -e ".[dev]"
-cd ../frontend && npm install && npm run build
-cd ../backend && LLM_PROVIDER=demo STATIC_DIR=../frontend/dist .venv/bin/uvicorn app.main:app_factory --factory --port 8000
-```
-
-* Demo storefront: <http://localhost:8000/> — switch between Guest / Alice / Bob and chat.
-* Agent console: <http://localhost:8000/console/> — company `acme`, key `sam-demo-key`.
-* `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers pick a provider — see [Choosing an AI provider](#choosing-an-ai-provider).
-
-Dev mode with hot reload: `uvicorn app.main:app_factory --factory --reload` + `cd frontend && npm run dev` (port 5173, proxies `/v1` to 8000).
-Docker: `docker compose up --build` (Postgres included).
 
 ## Choosing an AI provider
 
@@ -168,3 +173,7 @@ Design point: **~30,000 conversations/day → 5 conversations/s, ≈33 bot turns
 * Replies are not streamed token-by-token yet (typing indicator). Order-ownership also needs enforcing in your own order API: SupportPilot's checks hold on its side regardless.
 * Model: choose the cheapest one that passes every gate in the behavior suite. Optional `LLM_FALLBACK_PROVIDER`/`LLM_FALLBACK_MODEL` for provider overload (can be a different vendor). The model-in-the-loop eval suites currently run against Anthropic only; re-run the gates on whichever provider/model you ship.
 * Add SSO for the agent console (per-agent access keys today), per-tenant quotas, and widget feedback (👍/👎) for online evaluation.
+
+## License
+
+[MIT](LICENSE)
