@@ -5,7 +5,7 @@
 
 A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website gives visitors a chat assistant that answers from the company's own docs, looks up *only the signed-in user's* orders, files tickets and hands off to a human.
 
-**New to the project, or explaining it to a non-technical audience?** Start with the [pitch deck](docs/pitch/SupportPilot-AI-Pitch-Deck.pptx) ([notes](docs/pitch/README.md)): the problem, why existing bots fall short, how this one works, and a pilot plan, in 9 slides.
+**New to the project, or explaining it to a non-technical audience?** Start with the pitch deck: [PDF](docs/pitch/SupportPilot-AI-Pitch-Deck.pdf) (opens in the browser) or [PowerPoint](docs/pitch/SupportPilot-AI-Pitch-Deck.pptx) ([notes](docs/pitch/README.md)): the problem, why existing bots fall short, how this one works, and a pilot plan, in 9 slides.
 
 ## Try it in two minutes (no API key needed)
 
