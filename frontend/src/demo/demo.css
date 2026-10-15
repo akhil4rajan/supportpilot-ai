@@ -5,3 +5,8 @@ main { max-width:860px; margin:0 auto; padding:24px 16px 120px; }
 .hero { padding:56px 0 24px; } .hero h1 { font-size:40px; margin:0 0 8px; }
 .try { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:8px 24px 16px; } .try li { margin:8px 0; } q { font-weight:600; }
 code { background:#f1f5f9; padding:1px 5px; border-radius:4px; }
+.bar { border-bottom:3px solid var(--accent,#4f46e5); }
+.hero h1 { color:var(--accent,#0f172a); }
+.agent { margin:16px 0 4px; font-size:14px; color:#475569; }
+.foot { margin:20px 4px 0; font-size:13px; color:#64748b; }
+.foot { max-width:520px; }

@@ -10,6 +10,9 @@ DEMO_SECRETS = frozenset({
     "dev-only-shared-secret-change-me-32chars",
     "sam-demo-key",
     "jo-demo-key",
+    "dev-only-wattlebay-secret-change-me-32chars",
+    "wb-sam-demo-key",
+    "wb-jo-demo-key",
 })
 
 

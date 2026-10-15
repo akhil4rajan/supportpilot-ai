@@ -53,6 +53,7 @@ class HttpOrderProvider:
             tracking_number=self._pick(data, "tracking_number"),
             tracking_url=self._pick(data, "tracking_url"),
             estimated_delivery=self._pick(data, "estimated_delivery"),
+            scheduled_for=self._pick(data, "scheduled_for"),
         )
 
     async def get_order(self, customer_id: str, order_id: str) -> Order | None:

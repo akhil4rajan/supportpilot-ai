@@ -5,9 +5,9 @@
 
 A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website gives visitors a chat assistant that answers from the company's own docs, looks up *only the signed-in user's* orders, files tickets and hands off to a human.
 
-**New to the project, or explaining it to a non-technical audience?** Start with the pitch deck: [PDF](docs/pitch/SupportPilot-AI-Pitch-Deck.pdf) (opens in the browser) or [PowerPoint](docs/pitch/SupportPilot-AI-Pitch-Deck.pptx) ([notes](docs/pitch/README.md)): the problem, why existing bots fall short, how this one works, and a pilot plan, in 9 slides.
+**New to the project, or explaining it to a non-technical audience?** Start with the pitch deck: [PDF](docs/pitch/SupportPilot-AI-Pitch-Deck.pdf) (opens in the browser) or [PowerPoint](docs/pitch/SupportPilot-AI-Pitch-Deck.pptx) ([notes](docs/pitch/README.md)): the problem, why existing bots fall short, how this one works (with screenshots of the demo), and a pilot plan, in 11 slides.
 
-![The demo storefront with the SupportPilot widget open: a signed-in customer asks where their order is](docs/screenshots/hero.png)
+![The fictional Wattle Bay Hospital website with the SupportPilot widget open: Peter, signed in, asks about his appointment](docs/screenshots/hero.png)
 
 <sub>Screenshots use the keyword-based `LLM_PROVIDER=demo` stand-in model so they run without an API key. The auth, knowledge base, order lookup and handoff paths are the real ones; answer wording with a real model will differ.</sub>
 
@@ -20,8 +20,8 @@ cd ../frontend && npm install && npm run build
 cd ../backend && LLM_PROVIDER=demo STATIC_DIR=../frontend/dist .venv/bin/uvicorn app.main:app_factory --factory --port 8000
 ```
 
-* Demo storefront: <http://localhost:8000/> — switch between Guest / Alice / Bob and chat.
-* Agent console: <http://localhost:8000/console/> — company `acme`, key `sam-demo-key`.
+* Demo site: <http://localhost:8000/> — a **fictional Sydney hospital** (Wattle Bay Hospital). Switch between Guest / Peter / Mary and chat. For the retail example (Acme Outfitters, Alice / Bob) open <http://localhost:8000/?site=retail>.
+* Agent console: <http://localhost:8000/console/> — hospital: company `wattlebay`, agent `sam`, key `wb-sam-demo-key`; retail: company `acme`, agent `sam`, key `sam-demo-key`.
 * `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers pick a provider — see [Choosing an AI provider](#choosing-an-ai-provider).
 
 Dev mode with hot reload: `uvicorn app.main:app_factory --factory --reload` + `cd frontend && npm run dev` (port 5173, proxies `/v1` to 8000).
@@ -40,7 +40,7 @@ If `LLM_PROVIDER` needs a key you haven't set, the server refuses to start and t
 
 Answers come with the source passage they were drawn from:
 
-<img src="docs/screenshots/kb.png" alt="Widget answering a refund question with a returns.md source chip" width="300">
+<img src="docs/screenshots/kb.png" alt="Widget answering a parking-cost question, citing parking-and-getting-here.md" width="300">
 
 ```
  Customer's site                     SupportPilot (FastAPI)                         Integrations
@@ -105,6 +105,8 @@ Non-Anthropic providers use the OpenAI-compatible chat-completions API with tool
    ```
    Or programmatically: `SupportPilot.init({ publicKey, apiUrl, getUserToken })`.
 
+Tenants can name their records however they like (`orders.label: appointment` in `tenant.yaml`), so the same secure lookup serves retail orders, hospital appointments or bookings. The hospital demo is fictional and the assistant only gives general hospital information; it is not a clinical tool, and real patient data would need a proper privacy and security review (for example the Privacy Act 1988 and the NSW Health Records and Information Privacy Act 2002).
+
 Each tenant is isolated: its own KB, providers, secrets, conversations and agents (every DB lookup is tenant-scoped; covered by tests).
 
 ## Security model (order access)
@@ -121,7 +123,7 @@ Other controls: per-tenant `allowed_origins` (enforced in prod), separate JWT au
 
 The same question, from the customer who owns the order and from one who doesn't:
 
-![Alice sees her order status; Bob gets 'No order found'](docs/screenshots/isolation.png)
+![Peter sees his appointment; Mary gets 'No appointment found'](docs/screenshots/isolation.png)
 
 ## Human handoff
 
@@ -143,7 +145,7 @@ Uses `JIRA(server, basic_auth=(email, api_token))` (Jira Cloud API token) in a w
 |---|---|
 | [`docs/SCALING.md`](docs/SCALING.md) | **System design diagram**, capacity model for ~30,000 conversations/day, tier-by-tier scaling, reliability/SLOs, observability & alerts, cost model, rollout phases, load-test results, runbooks |
 | [`docs/EVALUATION.md`](docs/EVALUATION.md) | **How we decide it is ready for production**: test layers, eval suites and datasets, statistics, LLM-judge calibration, readiness gates, online evaluation (shadow/canary), release & go/no-go process |
-| [`docs/pitch/`](docs/pitch/README.md) | **Pitch deck** (9 slides, speaker notes) for a non-technical introduction |
+| [`docs/pitch/`](docs/pitch/README.md) | **Pitch deck** (11 slides, speaker notes, live-demo script) for a non-technical introduction |
 | [`docs/diagrams/system-design.svg`](docs/diagrams/system-design.svg) | the architecture diagram (generated by `docs/diagrams/build_system_design.py`) |
 
 ![System design](docs/diagrams/system-design.svg)
@@ -172,7 +174,7 @@ Three commands, increasing in cost (details and rationale in [`docs/EVALUATION.m
 
 ```bash
 cd backend
-python -m pytest --cov                 # unit + integration (148 tests, real Redis, coverage gate 88 %)
+python -m pytest --cov                 # unit + integration (153 tests, real Redis, coverage gate 88 %)
 python -m evals.run                    # fast release gates, no API key: retrieval, security, resilience, smoke   → exit 1 on FAIL
 python -m evals.run --llm anthropic --trials 3 --require-ready   # full: real model + LLM judge + manual checklist  (~$8)
 ```
@@ -182,7 +184,7 @@ python -m evals.run --llm anthropic --trials 3 --require-ready   # full: real mo
 **Current verdict: NOT READY** — correctly. Everything that can run without credentials passes (platform security 69/69, resilience 18/18, smoke 14/14, held-out retrieval, coverage 93.9 %), but the model-in-the-loop suites need `ANTHROPIC_API_KEY`, load must be re-measured on staging (Postgres + Redis), and the 12 manual items (pen-test, DPIA, shadow mode, DR drill, staffing…) are open. See [EVALUATION §12](docs/EVALUATION.md#12-current-status-baseline-in-this-repository).
 
 * `cd frontend && npm run typecheck && npm test && npm run build`.
-* A real-browser run (Playwright/Chromium) exercised: KB answer + citation, Alice vs Bob vs guest order lookups, ticket card, handoff, live agent↔customer messaging via the console, resolve, and the one-tag embed on a hostile-CSS page.
+* A real-browser run (Playwright/Chromium) exercised: KB answer + citation, Peter vs Mary vs guest appointment lookups (and Alice vs Bob for the retail tenant), ticket card, handoff, live agent↔customer messaging via the console, resolve, and the one-tag embed on a hostile-CSS page.
 
 **Not verified in the build environment** (no credentials/infrastructure there): calls to real model APIs (clients unit-tested against stubbed transports; orchestration against scripted models), a real Jira instance (fake `JIRA` object), the Docker build, **Postgres** (SQLite only; Redis *was* tested against a real `redis-server`).
 

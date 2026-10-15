@@ -46,6 +46,8 @@ class HttpOrdersConfig(BaseModel):
 
 class OrdersConfig(BaseModel):
     provider: Literal["none", "demo", "http"] = "none"
+    label: str = "order"  # what the customer calls these records: "order", "appointment", "booking"...
+    id_example: str = "ACM-1001"  # shown to the model as an example of a valid reference number
     demo_file: str = "orders.json"
     http: HttpOrdersConfig | None = None
 
