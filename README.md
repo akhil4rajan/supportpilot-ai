@@ -7,6 +7,10 @@ A multi-tenant, drop-in customer-support AI. One `<script>` tag on any website g
 
 **New to the project, or explaining it to a non-technical audience?** Start with the pitch deck: [PDF](docs/pitch/SupportPilot-AI-Pitch-Deck.pdf) (opens in the browser) or [PowerPoint](docs/pitch/SupportPilot-AI-Pitch-Deck.pptx) ([notes](docs/pitch/README.md)): the problem, why existing bots fall short, how this one works, and a pilot plan, in 9 slides.
 
+![The demo storefront with the SupportPilot widget open: a signed-in customer asks where their order is](docs/screenshots/hero.png)
+
+<sub>Screenshots use the keyword-based `LLM_PROVIDER=demo` stand-in model so they run without an API key. The auth, knowledge base, order lookup and handoff paths are the real ones; answer wording with a real model will differ.</sub>
+
 ## Try it in two minutes (no API key needed)
 
 ```bash
@@ -33,6 +37,10 @@ If `LLM_PROVIDER` needs a key you haven't set, the server refuses to start and t
 | **Check order status — only the user's own orders** | Identity comes from a token signed by the *customer's backend*, never from the chat. Tools can't take a user id; ownership is enforced in 3 layers. |
 | **Open a support ticket** | Jira via the [`jira`](https://pypi.org/project/jira/) Python package (pluggable provider). Asks for confirmation first, attaches the transcript, de-duplicates. |
 | **Hand off to a human** | Model-initiated, button-initiated, deterministic phrase match ("get me a human"), automatic after repeated failures, or on model outage. Live agent console over WebSocket. |
+
+Answers come with the source passage they were drawn from:
+
+<img src="docs/screenshots/kb.png" alt="Widget answering a refund question with a returns.md source chip" width="300">
 
 ```
  Customer's site                     SupportPilot (FastAPI)                         Integrations
@@ -110,6 +118,10 @@ The browser and the model are untrusted. A user can only ever see their own orde
 5. Every lookup is written to `audit_log`; malformed ids are rejected before any lookup; guests get `login_required`.
 
 Other controls: per-tenant `allowed_origins` (enforced in prod), separate JWT audiences for user/widget/agent tokens, constant-time key comparison, per-conversation rate limiting, message-size caps, `Shadow DOM` isolation, no `innerHTML` anywhere, prompt-injection rules (tool/KB output is data), `/v1/dev/*` only mounted when `ENV=dev`.
+
+The same question, from the customer who owns the order and from one who doesn't:
+
+![Alice sees her order status; Bob gets 'No order found'](docs/screenshots/isolation.png)
 
 ## Human handoff
 
