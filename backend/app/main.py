@@ -27,6 +27,7 @@ from app.llm.simulated import SimulatedLLM
 from app.services.outbox import OutboxWorker
 from app.services.ratelimit import RateLimiter, RedisRateLimiter
 from app.services.realtime import Hub, RedisHub
+from app.startup_checks import assert_safe_for_prod
 from app.state import AppState
 from app.tenancy.registry import TenantRegistry
 
@@ -84,6 +85,7 @@ def create_app(settings: Settings | None = None, llm: LLMClient | None = None) -
         await hub.start()
         agent = SupportAgent(llm or build_llm(settings), settings, hub)
         registry = TenantRegistry(settings.tenants_dir)
+        assert_safe_for_prod(settings, registry)
         app.state.sp = AppState(settings, db, registry, hub, agent, limiter, redis)
         worker = OutboxWorker(db, registry, hub, settings.outbox_poll_seconds, settings.outbox_max_attempts)
         if settings.run_outbox_worker:

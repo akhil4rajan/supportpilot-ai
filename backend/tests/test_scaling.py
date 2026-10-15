@@ -391,7 +391,8 @@ async def test_fallback_strips_model_bound_thinking_blocks():
     assert all(b.get("type") == "tool_use" for b in secondary.seen[0]["messages"][1]["content"])
 
 
-def test_build_llm_wires_fallback_only_when_configured(tmp_path):
+def test_build_llm_wires_fallback_only_when_configured(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     from app.config import Settings
     from app.llm.fallback import FallbackLLM
     from app.llm.guard import GuardedLLM
