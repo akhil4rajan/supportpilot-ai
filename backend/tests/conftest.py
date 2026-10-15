@@ -21,6 +21,9 @@ SECRET = "test-shared-secret-with-enough-length-123"
 os.environ.update(
     ACME_USER_TOKEN_SECRET=SECRET, ACME_AGENT_KEY_SAM="sam-key", ACME_AGENT_KEY_JO="jo-key",
     GLOBEX_USER_TOKEN_SECRET="globex-secret-with-enough-length-1234", GLOBEX_AGENT_KEY="globex-key",
+    # Set before create_app() loads a developer's .env (which holds the public demo values).
+    WATTLEBAY_USER_TOKEN_SECRET="wattlebay-test-secret-with-enough-length-12", WATTLEBAY_AGENT_KEY_SAM="wb-test-sam",
+    WATTLEBAY_AGENT_KEY_JO="wb-test-jo",
 )
 
 GLOBEX = """

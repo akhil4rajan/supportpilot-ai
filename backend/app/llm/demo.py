@@ -15,6 +15,17 @@ from .base import LLMResponse, ToolCall
 _ORDER = re.compile(r"\b([A-Za-z]{2,5}-\d{3,})\b")
 
 
+def _order_label(tools: list[dict[str, Any]]) -> tuple[str, str]:
+    """The tenant's word for these records ("order", "appointment"...) and an example id, read from the tool schema."""
+    for t in tools:
+        if t["name"] == "get_order_status":
+            desc = t["input_schema"]["properties"]["order_id"]["description"]
+            m = re.match(r"(\w+) number .*e\.g\. (\S+)", desc)
+            if m:
+                return m.group(1).lower(), m.group(2)
+    return "order", "ACM-1001"
+
+
 def _tool(name: str, **inp: Any) -> LLMResponse:
     tc = ToolCall(f"toolu_{uuid.uuid4().hex[:12]}", name, inp)
     return LLMResponse(
@@ -44,10 +55,11 @@ class DemoLLM:
             body = text.split(":", 1)[1].strip() if ":" in text else text
             return _tool("create_support_ticket", summary=body[:120] or "Support request", description=body or text)
         m = _ORDER.search(text)
-        if ("order" in low or m) and "get_order_status" in names:
+        label, example = _order_label(tools)
+        if (label in low or "order" in low or m) and "get_order_status" in names:
             if m:
                 return _tool("get_order_status", order_id=m.group(1))
-            return _say("Sure - what's your order number? (for example ACM-1001)")
+            return _say(f"Sure - what's your {label} number? (for example {example})")
         if "search_knowledge_base" in names:
             return _tool("search_knowledge_base", query=text)
         return _say("I can help with questions, order status and support tickets.")
@@ -66,8 +78,10 @@ class DemoLLM:
             return _say(f"{p['text'][:500]}\n\n(Source: {p['source']})")
         if "order" in data:
             o = data["order"]
-            eta = f" Estimated delivery: {o['estimated_delivery']}." if o.get("estimated_delivery") else ""
-            return _say(f"Order {o['order_id']} is **{o['status']}**.{eta}")
+            label = o.get("label", "order").capitalize()
+            when = (f" Estimated delivery: {o['estimated_delivery']}." if o.get("estimated_delivery")
+                    else f" Scheduled for {o['scheduled_for']}." if o.get("scheduled_for") else "")
+            return _say(f"{label} {o['order_id']} is **{o['status']}**.{when}")
         if "ticket" in data:
             return _say(f"I've opened ticket {data['ticket']['key']} for you. Our team will follow up.")
         if data.get("handoff"):

@@ -1,0 +1,11 @@
+[
+  {"id": "APT-1001", "customer_id": "peter", "status": "Confirmed", "placed_at": "2026-09-30",
+   "items": [{"name": "Cardiology outpatient review, Level 3 Clinic B", "quantity": 1}],
+   "scheduled_for": "Tuesday 20/10/2026 at 10:30am"},
+  {"id": "APT-1002", "customer_id": "peter", "status": "Completed", "placed_at": "2026-08-12",
+   "items": [{"name": "Pathology: blood test, Ground Floor Collection", "quantity": 1}],
+   "scheduled_for": "Monday 07/09/2026 at 8:15am"},
+  {"id": "APT-2001", "customer_id": "mary", "status": "Awaiting confirmation", "placed_at": "2026-10-10",
+   "items": [{"name": "Physiotherapy: knee rehabilitation, Level 1 Allied Health", "quantity": 1}],
+   "scheduled_for": "Thursday 22/10/2026 at 2:00pm"}
+]

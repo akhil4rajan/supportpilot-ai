@@ -25,6 +25,11 @@ EVAL_ENV = {
     "ACME_USER_TOKEN_SECRET": "eval-acme-user-token-secret-0123456789",
     "ACME_AGENT_KEY_SAM": "eval-sam-key",
     "ACME_AGENT_KEY_JO": "eval-jo-key",
+    # Every tenant shipped in backend/tenants needs non-demo secrets, or ENV=prod apps refuse to start
+    # on a machine whose .env was copied from .env.example.
+    "WATTLEBAY_USER_TOKEN_SECRET": "eval-wattlebay-user-token-secret-0123456",
+    "WATTLEBAY_AGENT_KEY_SAM": "eval-wb-sam-key",
+    "WATTLEBAY_AGENT_KEY_JO": "eval-wb-jo-key",
 }
 
 

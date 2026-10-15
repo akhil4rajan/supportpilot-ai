@@ -26,6 +26,7 @@ class Order:
     tracking_number: str | None = None
     tracking_url: str | None = None
     estimated_delivery: str | None = None
+    scheduled_for: str | None = None  # appointment / booking date-time, when the record is not a shipment
 
     def public_view(self) -> dict[str, Any]:
         """Allow-list of fields the model may see. No address, payment, or owner info."""
@@ -40,6 +41,7 @@ class Order:
             "tracking_number": self.tracking_number,
             "tracking_url": self.tracking_url,
             "estimated_delivery": self.estimated_delivery,
+            "scheduled_for": self.scheduled_for,
         }
 
 

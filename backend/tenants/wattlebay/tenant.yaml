@@ -1,0 +1,54 @@
+# FICTIONAL hospital used for the demo storefront. Wattle Bay Hospital does not exist; all people, numbers and
+# policies below are invented. Secrets are never written here - only the NAMES of the env vars that hold them.
+id: wattlebay
+name: Wattle Bay Hospital
+public_key: pk_wattlebay_demo
+allowed_origins:
+  - http://localhost:5173
+  - http://localhost:8000
+user_token_secret_env: WATTLEBAY_USER_TOKEN_SECRET
+
+branding:
+  title: Wattle Bay Hospital
+  greeting: "G'day, I'm Wren, Wattle Bay Hospital's virtual assistant. I can help with visiting hours, parking, appointments and billing. In an emergency, call 000."
+  primary_color: "#0f766e"
+  launcher_label: Ask us
+
+persona:
+  assistant_name: Wren
+  tone: warm, calm, clear and respectful; Australian English
+  extra_instructions: |
+    You are a hospital information assistant, NOT a clinician. Never give medical advice, diagnoses, medication
+    guidance or interpret symptoms or results. If someone describes symptoms or an emergency (chest pain, difficulty
+    breathing, stroke signs, severe bleeding, thoughts of self-harm), tell them to call 000 immediately, then offer a
+    human handoff. Appointment changes and cancellations are made by the booking team, not by you: offer a handoff.
+    Use Australian dates (day/month/year) and AEST/AEDT. Never share another person's information.
+
+knowledge:
+  path: knowledge
+  min_coverage: 0.35
+  weak_coverage: 0.10
+  synonyms:
+    parking: [park, car park, carpark, where to park]
+    visiting: [visitors, visit, see a patient]
+    billing: [bill, invoice, pay, payment]
+    medicare: [bulk bill, bulk-billed, bulk billing, rebate]
+    appointment: [booking, reschedule, outpatient, clinic]
+    emergency: [ED, A&E, urgent, accident]
+
+orders:
+  provider: demo                    # reuses the order-lookup mechanism for patient appointments
+  label: appointment
+  id_example: APT-1001
+  demo_file: appointments.json
+
+tickets:
+  provider: memory
+
+handoff:
+  max_unresolved_turns: 2
+  waiting_message: "I've passed your conversation to our patient services team. A team member will join this chat shortly."
+
+agents:
+  - { id: sam, name: Sam Nguyen, api_key_env: WATTLEBAY_AGENT_KEY_SAM }
+  - { id: jo, name: Jo Papadopoulos, api_key_env: WATTLEBAY_AGENT_KEY_JO }

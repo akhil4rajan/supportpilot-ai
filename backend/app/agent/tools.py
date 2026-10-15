@@ -90,20 +90,25 @@ async def search_knowledge_base(ctx: ToolContext, query: str = "") -> dict[str, 
     return out
 
 
+def _label(ctx: ToolContext) -> str:
+    return ctx.rt.tenant.orders.label
+
+
 async def get_order_status(ctx: ToolContext, order_id: str = "") -> dict[str, Any]:
+    label = _label(ctx)
     if ctx.user is None:
         metrics.ORDER_LOOKUPS.labels(ctx.rt.tenant.id, "denied").inc()
-        return {"error": "login_required", "message": "The customer must be signed in to check an order."}
+        return {"error": "login_required", "message": f"The customer must be signed in to check a {label}."}
     oid = normalize_order_id(str(order_id))
     if oid is None:
-        return {"error": "invalid_order_id", "message": "That doesn't look like a valid order number."}
+        return {"error": "invalid_order_id", "message": f"That doesn't look like a valid {label} number."}
     try:
         order = await ctx.rt.orders.get_order(ctx.user.id, oid)  # type: ignore[union-attr]
     except OrderProviderError as e:
         log.warning("order provider failure tenant=%s: %s", ctx.rt.tenant.id, e)
         metrics.ORDER_LOOKUPS.labels(ctx.rt.tenant.id, "error").inc()
         await _audit(ctx, "order_lookup_error", {"order_id": oid})
-        return {"error": "order_system_unavailable", "message": "The order system is temporarily unavailable."}
+        return {"error": "order_system_unavailable", "message": f"The {label} system is temporarily unavailable."}
     # Ownership assertion independent of the provider implementation (defence in depth).
     if order is not None and order.customer_id != ctx.user.id:
         log.error("OWNERSHIP VIOLATION tenant=%s user=%s order=%s", ctx.rt.tenant.id, ctx.user.id, oid)
@@ -114,23 +119,23 @@ async def get_order_status(ctx: ToolContext, order_id: str = "") -> dict[str, An
     await _audit(ctx, "order_lookup", {"order_id": oid, "found": order is not None})
     if order is None:
         # Identical response for "does not exist" and "belongs to someone else".
-        return {"found": False, "message": f"No order {oid} was found on this customer's account."}
+        return {"found": False, "message": f"No {label} {oid} was found on this customer's account."}
     ctx.task_succeeded = True
-    return {"found": True, "order": order.public_view()}
+    return {"found": True, "order": {**order.public_view(), "label": label}}
 
 
 async def list_my_orders(ctx: ToolContext) -> dict[str, Any]:
     if ctx.user is None:
-        return {"error": "login_required", "message": "The customer must be signed in to see their orders."}
+        return {"error": "login_required", "message": f"The customer must be signed in to see their {_label(ctx)}s."}
     try:
         orders = await ctx.rt.orders.list_orders(ctx.user.id, limit=5)  # type: ignore[union-attr]
     except OrderProviderError as e:
         log.warning("order provider failure tenant=%s: %s", ctx.rt.tenant.id, e)
-        return {"error": "order_system_unavailable", "message": "The order system is temporarily unavailable."}
+        return {"error": "order_system_unavailable", "message": f"The {_label(ctx)} system is temporarily unavailable."}
     orders = [o for o in orders if o.customer_id == ctx.user.id]
     await _audit(ctx, "order_list", {"count": len(orders)})
     ctx.task_succeeded = True
-    return {"orders": [o.public_view() for o in orders]}
+    return {"orders": [{**o.public_view(), "label": _label(ctx)} for o in orders]}
 
 
 async def create_support_ticket(
@@ -232,15 +237,16 @@ def tool_schemas(rt: TenantRuntime) -> list[dict[str, Any]]:
         }
     ]
     if rt.orders:
+        lbl, eg = rt.tenant.orders.label, rt.tenant.orders.id_example
         tools += [
             {
                 "name": "get_order_status",
-                "description": "Look up one order belonging to the signed-in customer (status, items, tracking, ETA). The customer's identity is applied automatically; only their own orders are visible.",
-                "input_schema": {"type": "object", "properties": {"order_id": {**_S, "description": "Order number as given by the customer, e.g. ACM-1001"}}, "required": ["order_id"]},
+                "description": f"Look up one {lbl} belonging to the signed-in customer (status, items, tracking, ETA). The customer's identity is applied automatically; only their own {lbl}s are visible.",
+                "input_schema": {"type": "object", "properties": {"order_id": {**_S, "description": f"{lbl.capitalize()} number as given by the customer, e.g. {eg}"}}, "required": ["order_id"]},
             },
             {
                 "name": "list_my_orders",
-                "description": "List the signed-in customer's most recent orders. Use when they don't know their order number.",
+                "description": f"List the signed-in customer's most recent {lbl}s. Use when they don't know their {lbl} number.",
                 "input_schema": {"type": "object", "properties": {}},
             },
         ]
