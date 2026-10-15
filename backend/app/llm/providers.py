@@ -38,6 +38,11 @@ SUPPORTED = sorted(NATIVE | PRESETS.keys())
 def build_client(provider: str, model: str, s: Settings) -> LLMClient:
     """`model` is required for every provider except anthropic (which has a default)."""
     if provider == "anthropic":
+        if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+            raise ValueError(
+                "LLM_PROVIDER=anthropic needs ANTHROPIC_API_KEY. "
+                "Set it in .env, or use LLM_PROVIDER=demo to try the app without an API key."
+            )
         from .anthropic_client import AnthropicLLM
         return AnthropicLLM(model or s.anthropic_model, s.llm_max_tokens, s.anthropic_effort)
     preset = PRESETS.get(provider)

@@ -1,0 +1,32 @@
+# Copy this folder to backend/tenants/<your-id>/, rename this file to tenant.yaml, and edit.
+# (Folders without a tenant.yaml are ignored, so this template is never loaded as a customer.)
+# Secrets are never written here - only the NAMES of the env vars that hold them (set them in .env).
+id: mysite
+name: My Site
+public_key: pk_mysite              # embedded in your page; identifies the tenant (not a secret)
+allowed_origins:                   # sites allowed to embed the widget (enforced when ENV=prod)
+  - https://www.example.com
+user_token_secret_env: MYSITE_USER_TOKEN_SECRET   # HS256 secret shared with YOUR backend (see examples/host_token_server.py)
+
+branding:
+  title: Support
+  greeting: "Hi! Ask me anything about our products and policies."
+  primary_color: "#4f46e5"
+
+persona:
+  assistant_name: Assistant
+  tone: friendly, concise and professional
+  extra_instructions: |
+    Never promise refunds or exceptions; those are decided by human agents.
+
+knowledge:
+  path: knowledge                  # put your .md / .txt docs in ./knowledge
+
+orders:
+  provider: none                   # none | demo | http  (http: your own order API, see tenants/acme/tenant.yaml)
+
+tickets:
+  provider: none                   # none | memory | jira
+
+agents:                            # human agents allowed into the console at /console/
+  - { id: you, name: Your Name, api_key_env: MYSITE_AGENT_KEY_YOU }
