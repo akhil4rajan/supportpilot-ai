@@ -21,7 +21,9 @@ cd ../backend && LLM_PROVIDER=demo STATIC_DIR=../frontend/dist .venv/bin/uvicorn
 * `LLM_PROVIDER=demo` is a keyword stand-in that exercises the real pipeline (auth, KB, tickets, handoff). For real answers pick a provider — see [Choosing an AI provider](#choosing-an-ai-provider).
 
 Dev mode with hot reload: `uvicorn app.main:app_factory --factory --reload` + `cd frontend && npm run dev` (port 5173, proxies `/v1` to 8000).
-Docker: `docker compose up --build` (Postgres included).
+Docker: `docker compose up --build` (Postgres included). It reads `.env`, so set `LLM_PROVIDER=demo` there to try it without a key, or put your real key in (`ANTHROPIC_API_KEY=...`).
+
+If `LLM_PROVIDER` needs a key you haven't set, the server refuses to start and tells you which variable is missing. With `ENV=prod` it also refuses to start while any of the public demo secrets from `.env.example` / `tenants/acme` are still in use.
 
 ## What it does
 
@@ -71,6 +73,14 @@ LLM_PROVIDER=openai LLM_MODEL=<id> LLM_FALLBACK_PROVIDER=groq LLM_FALLBACK_MODEL
 ```
 
 Non-Anthropic providers use the OpenAI-compatible chat-completions API with tool calling, so the chosen model must support tools. The orchestrator uses one internal message format and the client translates, so tool use, handoff and the order-access guarantees are identical across providers (see `backend/app/llm/`).
+
+## Add it to your own site in 5 steps
+
+1. **Create a tenant:** `cp -r backend/tenants/_template backend/tenants/mysite && mv backend/tenants/mysite/tenant.yaml.example backend/tenants/mysite/tenant.yaml`, then edit `id`, `public_key` and `allowed_origins`.
+2. **Add your docs:** drop `.md` / `.txt` files into `backend/tenants/mysite/knowledge/` (or upload through the admin API, below).
+3. **Set secrets in `.env`:** `MYSITE_USER_TOKEN_SECRET=$(openssl rand -base64 48)`, `MYSITE_AGENT_KEY_YOU=...`, plus your model provider key.
+4. **Identify signed-in users (optional):** copy [`examples/host_token_server.py`](examples/host_token_server.py) into your backend so the widget knows who is logged in. Skip it for anonymous chat.
+5. **Paste the script tag** from [`examples/embed.html`](examples/embed.html) into your pages, restart (or `POST /v1/admin/tenants/reload`), and chat.
 
 ## Onboarding a new customer (no code changes)
 
@@ -150,7 +160,7 @@ Three commands, increasing in cost (details and rationale in [`docs/EVALUATION.m
 
 ```bash
 cd backend
-python -m pytest --cov                 # unit + integration (137 tests, real Redis, coverage gate 88 %)
+python -m pytest --cov                 # unit + integration (148 tests, real Redis, coverage gate 88 %)
 python -m evals.run                    # fast release gates, no API key: retrieval, security, resilience, smoke   → exit 1 on FAIL
 python -m evals.run --llm anthropic --trials 3 --require-ready   # full: real model + LLM judge + manual checklist  (~$8)
 ```
