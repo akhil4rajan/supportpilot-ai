@@ -1,0 +1,44 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1920px; height: 1080px; overflow: hidden; background: #101B2C; font-family: 'IBM Plex Sans', Arial, sans-serif; color: #F6F5F1; }
+  #top { height: 150px; padding: 26px 40px 0; display: flex; gap: 28px; align-items: flex-start; }
+  #step { font-family: 'JetBrains Mono', monospace; font-size: 26px; color: #101B2C; background: #5EC4B6; border-radius: 10px; padding: 6px 14px; white-space: nowrap; }
+  #title { font-size: 40px; font-weight: 600; line-height: 1.15; }
+  #sub { font-size: 24px; color: #BFD0DC; margin-top: 8px; line-height: 1.35; }
+  #panes { display: flex; gap: 36px; padding: 0 30px; }
+  .pane { display: flex; flex-direction: column; gap: 8px; }
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 20px; color: #8FA3B5; letter-spacing: 1px; transition: color .3s; }
+  .frame { width: 912px; height: 855px; border-radius: 12px; overflow: hidden; border: 3px solid #2A3A52; transition: border-color .3s, box-shadow .3s; background: #fff; }
+  .frame.on { border-color: #5EC4B6; box-shadow: 0 0 0 6px rgba(94,196,182,.18); }
+  .pane.on .label { color: #5EC4B6; }
+  iframe { width: 960px; height: 900px; border: 0; transform: scale(0.95); transform-origin: 0 0; }
+  #foot { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 18px; color: #6B7F94; }
+  #card { position: absolute; inset: 0; background: #101B2C; display: flex; flex-direction: column; justify-content: center; padding: 0 160px; gap: 28px; transition: opacity .6s; }
+  #card.hide { opacity: 0; pointer-events: none; }
+  #card .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 28px; color: #5EC4B6; letter-spacing: 3px; }
+  #card h1 { font-size: 110px; font-weight: 600; line-height: 1.05; }
+  #card p { font-size: 38px; color: #BFD0DC; line-height: 1.35; max-width: 1450px; }
+  #card .small { font-family: 'JetBrains Mono', monospace; font-size: 24px; color: #8FA3B5; }
+  #card .bar { position: absolute; left: 0; top: 0; width: 24px; height: 100%; background: #0F766E; }
+</style></head>
+<body>
+<div id="top"><div id="step">0/9</div><div><div id="title"></div><div id="sub"></div></div></div>
+<div id="panes">
+  <div class="pane" id="p-site"><div class="label">CUSTOMER VIEW · WATTLE BAY HOSPITAL WEBSITE (FICTIONAL)</div><div class="frame" id="f-site"><iframe name="site" src="http://localhost:8000/"></iframe></div></div>
+  <div class="pane" id="p-console"><div class="label">AGENT VIEW · SUPPORTPILOT CONSOLE</div><div class="frame" id="f-console"><iframe name="console" src="http://localhost:8000/console/"></iframe></div></div>
+</div>
+<div id="foot">Recorded with LLM_PROVIDER=demo, a keyword stand-in model, so reply wording is scripted. Sign-in, retrieval, appointment lookups, tickets, handoff and live messaging are the real code paths.</div>
+<div id="card"><div class="bar"></div><div class="eyebrow" id="c-eyebrow"></div><h1 id="c-title"></h1><p id="c-body"></p><div class="small" id="c-small"></div></div>
+<script>
+  window.caption = (step, title, sub) => { document.getElementById('step').textContent = step; document.getElementById('title').textContent = title; document.getElementById('sub').textContent = sub || ''; };
+  window.focusPane = (which) => { for (const k of ['site', 'console']) { const on = k === which; document.getElementById('f-' + k).classList.toggle('on', on); document.getElementById('p-' + k).classList.toggle('on', on); } };
+  window.card = (show, eyebrow, title, body, small) => {
+    const c = document.getElementById('card');
+    if (show) { document.getElementById('c-eyebrow').textContent = eyebrow; document.getElementById('c-title').textContent = title; document.getElementById('c-body').textContent = body; document.getElementById('c-small').textContent = small; }
+    c.classList.toggle('hide', !show);
+  };
+</script>
+</body></html>
